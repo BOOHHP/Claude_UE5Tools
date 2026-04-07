@@ -1,0 +1,69 @@
+{
+  "TabLabel": "Batch Rename Tool",
+  "InitTabSize": [450, 250],
+  "InitPyCmd": "import importlib; from BatchRenameTool import BatchRenameTool; importlib.reload(BatchRenameTool); BatchRenameTool.instance = BatchRenameTool.BatchRenameController(%JsonPath)",
+  "Root": {
+    "SScrollBox": {
+      "Slots": [
+        {
+          "Padding": 15,
+          "SVerticalBox": {
+            "Slots": [
+              {
+                "AutoHeight": true,
+                "Padding": [0, 0, 0, 15],
+                "SHorizontalBox": {
+                  "Slots": [
+                    {
+                      "AutoWidth": true,
+                      "VAlign": "VAlign_Center",
+                      "STextBlock": {
+                        "Text": "资产前缀 (Prefix): "
+                      }
+                    },
+                    {
+                      "FillWidth": 1.0,
+                      "Padding": [10, 0, 0, 0],
+                      "SEditableTextBox": {
+                        "Aka": "input_prefix",
+                        "Text": "SM_"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "AutoHeight": true,
+                "Padding": [0, 0, 0, 15],
+                "SButton": {
+                  "Aka": "btn_execute",
+                  "HAlign": "HAlign_Center",
+                  "ContentPadding": [20, 5],
+                  "Text": "重命名选中的资产",
+                  "OnClick": "BatchRenameTool.instance.execute_rename()"
+                }
+              },
+              {
+                "AutoHeight": true,
+                "SBorder": {
+                  "Padding": 10,
+                  "BorderImage": {
+                    "Style": "FCoreStyle",
+                    "Brush": "ToolPanel.GroupBorder"
+                  },
+                  "Content": {
+                    "STextBlock": {
+                      "Aka": "txt_status",
+                      "Text": "就绪。请在内容浏览器中选中目标资产。",
+                      "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,42 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+*.bak
+
+# Unreal Engine generated folders/files
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+Script/
+
+# Unreal project user files
+*.VC.db
+*.VC.opendb
+*.suo
+*.opensdf
+*.sdf
+*.xcodeproj
+*.xcworkspace
