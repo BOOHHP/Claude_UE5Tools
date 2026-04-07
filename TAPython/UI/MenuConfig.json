@@ -180,6 +180,11 @@
                 "name": "Simple Input Tool",
                 "ExtensionHookName": "OnToolBarChameleon",
                 "ChameleonTools": "../Python/SimpleInputTool/SimpleInputTool.json"
+            },
+            {
+                "name": "场景选择工具",
+                "ExtensionHookName": "OnToolBarChameleon",
+                "ChameleonTools": "../Python/SceneSelectTool/SceneSelectTool.json"
             }
         ]
     },
