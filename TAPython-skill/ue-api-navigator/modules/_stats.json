@@ -1,0 +1,80 @@
+{
+  "generated_modules": [
+    {
+      "file": "actor_level.md",
+      "classes": 607,
+      "methods": 3624
+    },
+    {
+      "file": "ai_navigation.md",
+      "classes": 79,
+      "methods": 249
+    },
+    {
+      "file": "animation.md",
+      "classes": 532,
+      "methods": 2631
+    },
+    {
+      "file": "asset_management.md",
+      "classes": 92,
+      "methods": 789
+    },
+    {
+      "file": "audio.md",
+      "classes": 178,
+      "methods": 1304
+    },
+    {
+      "file": "blueprint.md",
+      "classes": 293,
+      "methods": 1912
+    },
+    {
+      "file": "core_misc.md",
+      "classes": 3747,
+      "methods": 18761
+    },
+    {
+      "file": "data_table.md",
+      "classes": 16,
+      "methods": 111
+    },
+    {
+      "file": "editor_tools.md",
+      "classes": 244,
+      "methods": 1909
+    },
+    {
+      "file": "geometry_procedural.md",
+      "classes": 557,
+      "methods": 3636
+    },
+    {
+      "file": "input_camera.md",
+      "classes": 318,
+      "methods": 2734
+    },
+    {
+      "file": "physics_collision.md",
+      "classes": 165,
+      "methods": 727
+    },
+    {
+      "file": "rendering.md",
+      "classes": 510,
+      "methods": 3680
+    },
+    {
+      "file": "sequencer_movie.md",
+      "classes": 155,
+      "methods": 1043
+    },
+    {
+      "file": "ui_chameleon.md",
+      "classes": 136,
+      "methods": 1125
+    }
+  ],
+  "total_modules": 15
+}
