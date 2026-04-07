@@ -123,6 +123,7 @@
         "items": [
             {
                 "name": "Minimal Example",
+                "tooltip": "最小示例工具，用于演示 Chameleon 工具的基础控件与交互。",
                 "ChameleonTools": "../Python/Example/MinimalExample.json",
                 "icon": {
                     "style": "ChameleonStyle",
@@ -131,6 +132,7 @@
             },
             {
                 "name": "Chameleon Widget Gallery",
+                "tooltip": "控件画廊，展示常用 Chameleon UI 控件的效果与用法。",
                 "ChameleonTools": "../Python/ChameleonGallery/ChameleonGallery.json",
                 "icon": {
                     "style": "ChameleonStyle",
@@ -139,6 +141,7 @@
             },
             {
                 "name": "Chameleon Shelf Tool",
+                "tooltip": "工具货架，用于集中管理和快速启动常用功能按钮。",
                 "ChameleonTools": "../Python/ShelfTools/Shelf.json",
                 "icon": {
                     "ImagePathInPlugin": "Resources/briefcase_32x.png"
@@ -146,12 +149,14 @@
             },
             {
                 "name": "Development",
+                "tooltip": "开发调试工具集合。",
                 "icon": {
                     "ImagePathInPlugin": "Resources/Chameleon_32x.png"
                 },
                 "items": [
                     {
                         "name": "Object Detail Viewer",
+                        "tooltip": "查看并检索对象属性详情，便于调试与排查。",
                         "ChameleonTools": "../Python/QueryTools/ObjectDetailViewer.json",
                         "enabled": true,
                         "icon": {
@@ -163,6 +168,7 @@
             },
             {
                 "name": "Batch Rename Tool",
+                "tooltip": "批量重命名工具，可按规则快速重命名对象或资源。",
                 "ExtensionHookName": "OnToolBarChameleon",
                 "ChameleonTools": "../Python/BatchRenameTool/BatchRenameTool.json"
             },
@@ -178,6 +184,7 @@
             },
             {
                 "name": "Simple Input Tool",
+                "tooltip": "简单输入示例工具，用于快速验证文本输入与参数交互。",
                 "ExtensionHookName": "OnToolBarChameleon",
                 "ChameleonTools": "../Python/SimpleInputTool/SimpleInputTool.json"
             },
