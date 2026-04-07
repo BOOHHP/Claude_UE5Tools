@@ -83,6 +83,19 @@ class SceneSelectController:
         except Exception as e:
             unreal.log_error(f"SceneSelectTool select_all_types: {str(e)}")
 
+    def clear_selection(self):
+        try:
+            actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+            actor_subsystem.set_selected_level_actors([])
+
+            msg = "已取消当前所有已选物件。"
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneSelectTool: {msg}")
+        except Exception as e:
+            error_msg = f"取消选择失败：{str(e)}"
+            unreal.log_error(f"SceneSelectTool clear_selection: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
     # ------------------------------------------------------------------
     # 主功能：批量选择
     # ------------------------------------------------------------------
@@ -151,20 +164,66 @@ class SceneSelectController:
             if self.scope_all:
                 return list(all_actors)
 
-            # 当前关卷：用 EditorLevelLibrary 获取当前激活的关卷
-            try:
-                current_level = unreal.EditorLevelLibrary.get_current_level()
-            except:
-                # 备选方案：使用世界的持久关卷
-                world = unreal.EditorLevelLibrary.get_editor_world()
-                current_level = world.persistent_level
+            current_level = self._resolve_current_level()
+            if current_level is None:
+                self.data.set_text("txt_status", "无法识别当前关卡，已回退为扫描所有关卡。")
+                unreal.log_warning("SceneSelectTool: 无法识别当前关卡，已回退为扫描所有关卡。")
+                return list(all_actors)
 
-            return [a for a in all_actors if a.get_outer() == current_level]
+            return [a for a in all_actors if self._get_actor_level(a) == current_level]
 
         except Exception as e:
             error_msg = f"获取 Actor 列表失败：{str(e)}"
             unreal.log_error(f"SceneSelectTool _get_actors: {error_msg}")
             self.data.set_text("txt_status", error_msg)
+            return None
+
+    def _resolve_current_level(self):
+        try:
+            level = unreal.EditorLevelLibrary.get_current_level()
+            if level is not None:
+                return level
+        except Exception:
+            pass
+
+        try:
+            world = unreal.EditorLevelLibrary.get_editor_world()
+        except Exception:
+            return None
+
+        for prop_name in ("current_level", "persistent_level"):
+            level = self._safe_get_editor_property(world, prop_name)
+            if level is not None:
+                return level
+
+            try:
+                level = getattr(world, prop_name)
+                if level is not None:
+                    return level
+            except Exception:
+                pass
+
+        return None
+
+    def _get_actor_level(self, actor):
+        try:
+            return actor.get_level()
+        except Exception:
+            pass
+
+        level = self._safe_get_editor_property(actor, "level")
+        if level is not None:
+            return level
+
+        try:
+            return actor.get_outer()
+        except Exception:
+            return None
+
+    def _safe_get_editor_property(self, obj, prop_name):
+        try:
+            return obj.get_editor_property(prop_name)
+        except Exception:
             return None
 
     def _matches_type(self, actor, target_classes, check_blueprint):

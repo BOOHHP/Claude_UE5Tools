@@ -252,12 +252,30 @@
                             {
                                 "AutoHeight": true,
                                 "Padding": [0, 0, 0, 10],
-                                "SButton": {
-                                    "Aka": "btn_execute",
-                                    "HAlign": "HAlign_Center",
-                                    "ContentPadding": [40, 8],
-                                    "Text": "批量选择",
-                                    "OnClick": "SceneSelectTool.instance.execute_select()"
+                                "SHorizontalBox": {
+                                    "Slots": [
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [0, 0, 6, 0],
+                                            "SButton": {
+                                                "Aka": "btn_execute",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [30, 8],
+                                                "Text": "批量选择",
+                                                "OnClick": "SceneSelectTool.instance.execute_select()"
+                                            }
+                                        },
+                                        {
+                                            "FillWidth": 1.0,
+                                            "SButton": {
+                                                "Aka": "btn_clear_selection",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [30, 8],
+                                                "Text": "取消所有选择",
+                                                "OnClick": "SceneSelectTool.instance.clear_selection()"
+                                            }
+                                        }
+                                    ]
                                 }
                             },
 

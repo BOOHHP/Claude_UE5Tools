@@ -182,7 +182,8 @@
                 "ChameleonTools": "../Python/SimpleInputTool/SimpleInputTool.json"
             },
             {
-                "name": "场景选择工具",
+                "name": "Scene Selection Tool",
+                "tooltip": "按关卡范围和物件类型批量选择场景中的 Actor。",
                 "ExtensionHookName": "OnToolBarChameleon",
                 "ChameleonTools": "../Python/SceneSelectTool/SceneSelectTool.json"
             }
