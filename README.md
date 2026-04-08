@@ -130,3 +130,9 @@ After tool changes, commit related files together:
 - documentation updates when needed
 
 Prefer one commit containing feature logic + menu config + docs for easier traceability.
+
+## 9. TAPython Releases for Other UE5 Versions
+
+If you need TAPython plugin packages for other UE5 versions, visit:
+
+- https://github.com/cgerchenhp/UE_TAPython_Plugin_Release/releases

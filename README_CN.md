@@ -128,3 +128,9 @@ MenuConfigFilePath=TA/TAPython/UI/MenuConfig.json
   - `TAPython/UI/MenuConfig.json`
   - 必要时文档（本 README 或技能文档）
 - 保持“功能改动 + 菜单配置 + 文档”同一次提交，便于回溯。
+
+## 9. TAPython 其它 UE5 版本下载指引
+
+如需查找 TAPython 在其它 UE5 版本的插件发布包，请访问：
+
+- https://github.com/cgerchenhp/UE_TAPython_Plugin_Release/releases
