@@ -29,6 +29,10 @@ TA/
 
 ## 2. Deploying the TAPython Plugin
 
+> Important limitation: this plugin supports **UE projects with English-only paths**.
+> Keep the project directory, parent directories, and user-profile path in English without spaces/non-ASCII/special characters whenever possible.
+> Non-English or special-character paths may cause Python path loading failures, missing menus, or tool initialization issues.
+
 Use the ZIP package:
 
 1. Extract `TAPython_UE5_Plugin.zip`.
