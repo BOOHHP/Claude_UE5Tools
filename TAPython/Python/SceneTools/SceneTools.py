@@ -29,6 +29,11 @@ class SceneToolsController:
         self.json_path = json_path
         self.data = unreal.PythonBPLib.get_chameleon_data(json_path)
 
+        self.ui_scrollbox = "scene_tools_scroll"
+        self.min_window_width = 360
+        self.min_window_height = 300
+        self.max_window_height = 720
+
         # True = 所有关卡，False = 当前关卡（Python 端维护状态，不回读 UI）
         self.scope_all = False
         # 防止 set_checkbox_state 触发 OnCheckStateChanged 引起回调循环
@@ -215,6 +220,42 @@ class SceneToolsController:
             error_msg = f"显示失败：{str(e)}"
             unreal.log_error(f"SceneTools execute_show: {error_msg}")
             self.data.set_text("txt_status", error_msg)
+
+    def on_panel_expansion_changed(self, _is_expanded):
+        self._resize_window_to_content()
+
+    def _resize_window_to_content(self):
+        current_size = unreal.ChameleonData.get_chameleon_window_size(self.json_path)
+        if not current_size:
+            return
+
+        target_width = max(int(round(current_size.x)), self.min_window_width)
+        target_height = self._calculate_target_window_height(current_size)
+
+        if int(round(current_size.x)) == target_width and int(round(current_size.y)) == target_height:
+            return
+
+        unreal.ChameleonData.set_chameleon_window_size(
+            self.json_path,
+            unreal.Vector2D(target_width, target_height)
+        )
+
+    def _calculate_target_window_height(self, current_size):
+        try:
+            offsets = self.data.get_scroll_box_offsets(self.ui_scrollbox)
+            view_fraction = offsets.get("viewFraction", 1.0)
+            scroll_end = offsets.get("ScrollOffsetOfEnd", 0.0)
+
+            if view_fraction <= 0.0 or view_fraction >= 1.0:
+                content_height = current_size.y
+            else:
+                content_height = scroll_end / (1.0 - view_fraction)
+
+            padded_height = int(round(content_height + 56))
+            return max(self.min_window_height, min(padded_height, self.max_window_height))
+        except Exception as e:
+            unreal.log_warning(f"SceneTools resize fallback: {str(e)}")
+            return max(int(round(current_size.y)), self.min_window_height)
 
     # ------------------------------------------------------------------
     # 内部工具方法

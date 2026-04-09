@@ -5,6 +5,7 @@
 
     "Root": {
         "SScrollBox": {
+            "Aka": "scene_tools_scroll",
             "Slots": [
                 {
                     "Padding": [8, 8, 8, 4],
@@ -16,6 +17,7 @@
                                 "Padding": [0, 0, 0, 6],
                                 "SExpandableArea": {
                                     "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
                                     "HeaderPadding": 3,
                                     "HeaderContent": {
                                         "STextBlock": {
@@ -300,6 +302,7 @@
                                 "Padding": [0, 0, 0, 6],
                                 "SExpandableArea": {
                                     "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
                                     "HeaderPadding": 3,
                                     "HeaderContent": {
                                         "STextBlock": {
