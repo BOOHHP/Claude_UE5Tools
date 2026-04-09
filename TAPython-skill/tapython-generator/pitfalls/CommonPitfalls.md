@@ -14,6 +14,8 @@ This document catalogs the most common mistakes when developing TAPython tools a
 8. [UE5 Level API Compatibility Issues](#pitfall-8-ue5-level-api-compatibility-issues)
 9. [Current-Level Filtering Is Too Fragile](#pitfall-9-current-level-filtering-is-too-fragile)
 10. [Missing Menu Tooltip Descriptions](#pitfall-10-missing-menu-tooltip-descriptions)
+11. [Checkbox API Name Mismatch & Boolean Literal in JSON](#pitfall-11-checkbox-api-name-mismatch--boolean-literal-in-json)
+12. [Actor Visibility Toggle API Instability](#pitfall-12-actor-visibility-toggle-api-instability)
 
 ---
 
@@ -586,7 +588,206 @@ For each `OnToolBarChameleon.items` entry:
 
 ---
 
-## Summary: Quick Reference
+## Pitfall 11: Checkbox API Name Mismatch & Boolean Literal in JSON
+
+### The Problem
+
+Occurred during SceneTools development when implementing bulk select/deselect buttons.
+
+Two separate issues:
+1. Chameleon Data method has inconsistent naming: `set_check_boxe_is_checked()` (typo/old name) vs `set_is_checked()` (correct new name)
+2. Passing Python boolean literals directly in JSON event callbacks does not work: `"OnClick": "method(True)"` fails to pass the boolean value correctly
+
+### Why It's Wrong
+
+❌ **Wrong**:
+```python
+# Wrong API name (typo or old version)
+self.data.set_check_boxe_is_checked(aka, True)
+```
+
+❌ **Wrong** (JSON):
+```json
+{
+    "SButton": {
+        "Text": "全选",
+        "OnClick": "SceneTools.instance.select_all_types(True)"
+    }
+}
+```
+
+1. **API name inconsistency** - Different TAPython versions use different method names
+2. **Boolean literal in JSON** - Chameleon framework doesn't properly parse `True`/`False` in callback strings
+3. **Silent failure** - Checkbox state doesn't change, no error message
+4. **Version incompatibility** - Works in one environment, breaks in another
+
+### The Solution
+
+**For checkbox state setting**:
+Create a compatibility wrapper that tries multiple API names:
+
+✅ **Right**:
+```python
+def _set_checkbox_checked(self, aka, checked):
+    """Set checkbox state with multi-API compatibility."""
+    try:
+        # Try new API first
+        self.data.set_is_checked(aka, checked)
+        return
+    except Exception:
+        pass
+    
+    # Fallback to old API name
+    self.data.set_check_boxe_is_checked(aka, checked)
+```
+
+**For event callbacks**:
+Never pass boolean literals in JSON. Instead, create separate methods with no parameters:
+
+✅ **Right**:
+```python
+# In Python controller
+def select_all_types_true(self):
+    """Select all checkboxes."""
+    for aka in _ALL_TYPE_AKAS:
+        self._set_checkbox_checked(aka, True)
+
+def select_all_types_false(self):
+    """Deselect all checkboxes."""
+    for aka in _ALL_TYPE_AKAS:
+        self._set_checkbox_checked(aka, False)
+```
+
+```json
+{
+    "SButton": {
+        "Text": "全选",
+        "OnClick": "SceneTools.instance.select_all_types_true()"
+    }
+},
+{
+    "SButton": {
+        "Text": "全不选",
+        "OnClick": "SceneTools.instance.select_all_types_false()"
+    }
+}
+```
+
+### How to Apply
+
+1. **Identify all checkbox operations** in your tool
+2. **Create compatibility wrapper** (`_set_checkbox_checked`) that tries both API names
+3. **Split parameterized callbacks** into separate zero-argument methods
+4. **Test in multiple TAPython versions** to verify compatibility
+
+---
+
+## Pitfall 12: Actor Visibility Toggle API Instability
+
+### The Problem
+
+Occurred during SceneTools Visibility feature development when implementing hide/show functionality.
+
+Multiple visibility APIs exist in UE5 Python bindings, but they have different compatibility levels:
+
+- `actor.set_editor_property("is_hidden_ed", bool)` - May fail on some actor types
+- `unreal.EditorLevelLibrary.set_actor_visibility(actor, bool)` - May not exist in all TAPython versions
+- `actor.set_is_temporarily_hidden_in_editor(bool)` - Most reliable but not always available
+- Direct property assignment - Inconsistent results
+
+### Why It's Wrong
+
+❌ **Wrong** (single API):
+```python
+def execute_hide(self):
+    for actor in selected_actors:
+        # This fails silently on some actor types or UE5 versions
+        actor.set_editor_property("is_hidden_ed", True)
+```
+
+1. **Single point of failure** - Tool breaks if one API unavailable
+2. **Version incompatibility** - Works in UE 5.3 but not 5.4 or vice versa
+3. **Actor-type dependencies** - Some actors don't support certain APIs
+4. **Silent failures** - No feedback that operation failed
+5. **Poor user experience** - User clicks "Hide" button with no visible result
+
+### The Solution
+
+Implement multi-level API fallback with proper error handling:
+
+✅ **Right**:
+```python
+def _set_actor_editor_visibility(self, actor, visible):
+    """Toggle actor visibility in editor with multi-API fallback."""
+    hidden = not visible
+
+    # Priority 1: Editor-specific temporary hide (most reliable)
+    try:
+        actor.set_is_temporarily_hidden_in_editor(hidden)
+        return True
+    except Exception:
+        pass
+
+    # Priority 2: Generic actor hide
+    try:
+        actor.set_actor_hidden(hidden)
+        return True
+    except Exception:
+        pass
+
+    # Priority 3: Editor property fallback (multiple names)
+    for prop_name in ("is_temporarily_hidden_in_editor", "is_hidden_ed"):
+        try:
+            actor.set_editor_property(prop_name, hidden)
+            return True
+        except Exception:
+            continue
+
+    # Complete failure - log and inform user
+    unreal.log_warning(f"Actor {actor.get_name()} doesn't support visibility toggle.")
+    return False
+
+def execute_hide(self):
+    """Hide selected actors with multi-API compatibility."""
+    try:
+        actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        selected_actors = actor_subsystem.get_selected_level_actors()
+
+        if not selected_actors:
+            self.data.set_text("txt_status", "No actors selected.")
+            return
+
+        hidden_count = 0
+        for actor in selected_actors:
+            if self._set_actor_editor_visibility(actor, False):
+                hidden_count += 1
+
+        msg = f"Hidden {hidden_count} / {len(selected_actors)} actors."
+        self.data.set_text("txt_status", msg)
+
+    except Exception as e:
+        self.data.set_text("txt_status", f"Hide failed: {str(e)}")
+        unreal.log_error(f"execute_hide error: {str(e)}")
+```
+
+### How to Apply
+
+1. **Never hardcode a single API call** for actor manipulation
+2. **Encapsulate in helper methods** that try multiple APIs internally
+3. **Log warnings** for actors that don't support the operation
+4. **Inform user** of partial success (X of Y actors modified)
+5. **Test across UE5 versions** to verify fallback chain works
+
+### Key API Reference
+
+| Method | Reliability | Note |
+|--------|-------------|------|
+| `actor.set_is_temporarily_hidden_in_editor(bool)` | High | Editor-specific, most stable |
+| `actor.set_actor_hidden(bool)` | Medium | Generic hide, works on most actors |
+| `actor.set_editor_property("is_temporarily_hidden_in_editor", bool)` | Medium | Fallback, slower |
+| `actor.set_editor_property("is_hidden_ed", bool)` | Low | Old API, unreliable |
+
+---
 | Pitfall | Solution |
 |---------|----------|
 | Inline Python in UI | Use `Aka` + controller methods |
@@ -599,6 +800,8 @@ For each `OnToolBarChameleon.items` entry:
 | UE5 level API compatibility | Multi-step level resolution + graceful fallback |
 | Fragile current-level filtering | Resolve actor level via layered API fallback |
 | Missing menu tooltips | Add concise Chinese `tooltip` to each tool item |
+| Checkbox API mismatch | Compatibility wrapper for both `set_is_checked()` and old API; no boolean literals in JSON |
+| Actor visibility API instability | Multi-level fallback: editor-specific → generic → property fallback |
 
 ---
 
@@ -616,6 +819,10 @@ Before deploying a TAPython tool, verify:
 - [ ] User feedback provided for all operations
 - [ ] Edge cases handled (empty selections, invalid input)
 - [ ] Error messages logged to unreal.log_error()
+- [ ] Checkbox operations use compatibility wrapper for API names
+- [ ] No boolean literals passed in JSON event callbacks (use separate parameterless methods instead)
+- [ ] Actor visibility operations use multi-level API fallback
+- [ ] Actor manipulation tested across multiple UE5/TAPython versions
 
 ---
 

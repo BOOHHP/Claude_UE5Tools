@@ -23,7 +23,7 @@ _ALL_TYPE_AKAS = [
 ]
 
 
-class SceneSelectController:
+class SceneToolsController:
 
     def __init__(self, json_path):
         self.json_path = json_path
@@ -45,13 +45,13 @@ class SceneSelectController:
         try:
             if checked:
                 self.scope_all = False
-                self.data.set_check_boxe_is_checked("chk_scope_all", False)
+                self._set_checkbox_checked("chk_scope_all", False)
             else:
                 if not self.scope_all:
                     # 防止两个都变为未选中 —— 强制保持当前关卡选中
-                    self.data.set_check_boxe_is_checked("chk_scope_current", True)
+                    self._set_checkbox_checked("chk_scope_current", True)
         except Exception as e:
-            unreal.log_error(f"SceneSelectTool scope_current: {str(e)}")
+            unreal.log_error(f"SceneTools scope_current: {str(e)}")
         finally:
             self._scope_updating = False
 
@@ -62,13 +62,13 @@ class SceneSelectController:
         try:
             if checked:
                 self.scope_all = True
-                self.data.set_check_boxe_is_checked("chk_scope_current", False)
+                self._set_checkbox_checked("chk_scope_current", False)
             else:
                 if self.scope_all:
                     # 防止两个都变为未选中 —— 强制保持所有关卡选中
-                    self.data.set_check_boxe_is_checked("chk_scope_all", True)
+                    self._set_checkbox_checked("chk_scope_all", True)
         except Exception as e:
-            unreal.log_error(f"SceneSelectTool scope_all: {str(e)}")
+            unreal.log_error(f"SceneTools scope_all: {str(e)}")
         finally:
             self._scope_updating = False
 
@@ -76,12 +76,21 @@ class SceneSelectController:
     # 全选 / 全不选
     # ------------------------------------------------------------------
 
-    def select_all_types(self, checked):
+    def select_all_types_true(self):
+        """全选所有物件类型"""
         try:
             for aka in _ALL_TYPE_AKAS:
-                self.data.set_check_boxe_is_checked(aka, checked)
+                self._set_checkbox_checked(aka, True)
         except Exception as e:
-            unreal.log_error(f"SceneSelectTool select_all_types: {str(e)}")
+            unreal.log_error(f"SceneTools select_all_types_true: {str(e)}")
+
+    def select_all_types_false(self):
+        """全不选所有物件类型"""
+        try:
+            for aka in _ALL_TYPE_AKAS:
+                self._set_checkbox_checked(aka, False)
+        except Exception as e:
+            unreal.log_error(f"SceneTools select_all_types_false: {str(e)}")
 
     def clear_selection(self):
         try:
@@ -90,10 +99,10 @@ class SceneSelectController:
 
             msg = "已取消当前所有已选物件。"
             self.data.set_text("txt_status", msg)
-            unreal.log(f"SceneSelectTool: {msg}")
+            unreal.log(f"SceneTools: {msg}")
         except Exception as e:
             error_msg = f"取消选择失败：{str(e)}"
-            unreal.log_error(f"SceneSelectTool clear_selection: {error_msg}")
+            unreal.log_error(f"SceneTools clear_selection: {error_msg}")
             self.data.set_text("txt_status", error_msg)
 
     # ------------------------------------------------------------------
@@ -125,7 +134,7 @@ class SceneSelectController:
                         cls = eval(class_str)
                         target_classes.append(cls)
                     except Exception:
-                        unreal.log_warning(f"SceneSelectTool: 类 {class_str} 不可用，已跳过。")
+                        unreal.log_warning(f"SceneTools: 类 {class_str} 不可用，已跳过。")
 
             # 4. 过滤
             selected = []
@@ -144,11 +153,67 @@ class SceneSelectController:
             else:
                 msg = f"未找到匹配的物件（扫描了 {len(candidates)} 个，范围：{scope_label}）。"
             self.data.set_text("txt_status", msg)
-            unreal.log(f"SceneSelectTool: {msg}")
+            unreal.log(f"SceneTools: {msg}")
 
         except Exception as e:
             error_msg = f"错误：{str(e)}"
-            unreal.log_error(f"SceneSelectTool execute_select: {error_msg}")
+            unreal.log_error(f"SceneTools execute_select: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    # ------------------------------------------------------------------
+    # Visibility 功能：批量隐藏 / 显示
+    # ------------------------------------------------------------------
+
+    def execute_hide(self):
+        try:
+            actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+            selected_actors = actor_subsystem.get_selected_level_actors()
+
+            if not selected_actors:
+                self.data.set_text("txt_status", "提示：没有选中的物件。")
+                return
+
+            hidden_count = 0
+            for actor in selected_actors:
+                try:
+                    if self._set_actor_editor_visibility(actor, False):
+                        hidden_count += 1
+                except Exception as e:
+                    unreal.log_warning(f"SceneTools: 隐藏 Actor {actor.get_name()} 失败 - {str(e)}")
+
+            msg = f"已隐藏 {hidden_count} / {len(selected_actors)} 个物件。"
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+
+        except Exception as e:
+            error_msg = f"隐藏失败：{str(e)}"
+            unreal.log_error(f"SceneTools execute_hide: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def execute_show(self):
+        try:
+            actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+            selected_actors = actor_subsystem.get_selected_level_actors()
+
+            if not selected_actors:
+                self.data.set_text("txt_status", "提示：没有选中的物件。")
+                return
+
+            shown_count = 0
+            for actor in selected_actors:
+                try:
+                    if self._set_actor_editor_visibility(actor, True):
+                        shown_count += 1
+                except Exception as e:
+                    unreal.log_warning(f"SceneTools: 显示 Actor {actor.get_name()} 失败 - {str(e)}")
+
+            msg = f"已显示 {shown_count} / {len(selected_actors)} 个物件。"
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+
+        except Exception as e:
+            error_msg = f"显示失败：{str(e)}"
+            unreal.log_error(f"SceneTools execute_show: {error_msg}")
             self.data.set_text("txt_status", error_msg)
 
     # ------------------------------------------------------------------
@@ -167,14 +232,14 @@ class SceneSelectController:
             current_level = self._resolve_current_level()
             if current_level is None:
                 self.data.set_text("txt_status", "无法识别当前关卡，已回退为扫描所有关卡。")
-                unreal.log_warning("SceneSelectTool: 无法识别当前关卡，已回退为扫描所有关卡。")
+                unreal.log_warning("SceneTools: 无法识别当前关卡，已回退为扫描所有关卡。")
                 return list(all_actors)
 
             return [a for a in all_actors if self._get_actor_level(a) == current_level]
 
         except Exception as e:
             error_msg = f"获取 Actor 列表失败：{str(e)}"
-            unreal.log_error(f"SceneSelectTool _get_actors: {error_msg}")
+            unreal.log_error(f"SceneTools _get_actors: {error_msg}")
             self.data.set_text("txt_status", error_msg)
             return None
 
@@ -225,6 +290,46 @@ class SceneSelectController:
             return obj.get_editor_property(prop_name)
         except Exception:
             return None
+
+    def _set_checkbox_checked(self, aka, checked):
+        """设置复选框状态，兼容不同 TAPython 版本 API。"""
+        try:
+            self.data.set_is_checked(aka, checked)
+            return
+        except Exception:
+            pass
+
+        # 旧版 TAPython API（保留回退）
+        self.data.set_check_boxe_is_checked(aka, checked)
+
+    def _set_actor_editor_visibility(self, actor, visible):
+        """设置 Actor 在编辑器中的可见性，兼容不同 UE5 Python 绑定。"""
+        hidden = not visible
+
+        # 优先使用编辑器临时隐藏接口
+        try:
+            actor.set_is_temporarily_hidden_in_editor(hidden)
+            return True
+        except Exception:
+            pass
+
+        # 次选：通用 Actor 隐藏接口
+        try:
+            actor.set_actor_hidden(hidden)
+            return True
+        except Exception:
+            pass
+
+        # 最后回退：编辑器属性设置
+        for prop_name in ("is_temporarily_hidden_in_editor", "is_hidden_ed"):
+            try:
+                actor.set_editor_property(prop_name, hidden)
+                return True
+            except Exception:
+                continue
+
+        unreal.log_warning(f"SceneTools: Actor {actor.get_name()} 不支持可见性切换。")
+        return False
 
     def _matches_type(self, actor, target_classes, check_blueprint):
         """判断 actor 是否属于目标类型之一。"""
