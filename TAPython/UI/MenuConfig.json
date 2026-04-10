@@ -173,22 +173,6 @@
                 "ChameleonTools": "../Python/BatchRenameTool/BatchRenameTool.json"
             },
             {
-                "ExtensionHookName": "OnToolBarChameleon",
-                "items": [
-                    {
-                        "name": "Point Light Manager",
-                        "tooltip": "列出并管理当前关卡的所有点光源",
-                        "ChameleonTools": "../Python/PointLightManager/PointLightManager.json"
-                    }
-                ]
-            },
-            {
-                "name": "Simple Input Tool",
-                "tooltip": "简单输入示例工具，用于快速验证文本输入与参数交互。",
-                "ExtensionHookName": "OnToolBarChameleon",
-                "ChameleonTools": "../Python/SimpleInputTool/SimpleInputTool.json"
-            },
-            {
                 "name": "Scene Tools",
                 "tooltip": "场景工具集：按范围和类型批量选择，以及隐藏/显示 Actor 可见性控制。",
                 "ExtensionHookName": "OnToolBarChameleon",
