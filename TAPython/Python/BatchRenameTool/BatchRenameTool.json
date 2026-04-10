@@ -1,6 +1,6 @@
-{
-  "TabLabel": "Batch Rename Tool",
-  "InitTabSize": [450, 250],
+﻿{
+  "TabLabel": "批量重命名工具",
+  "InitTabSize": [560, 420],
   "InitPyCmd": "import importlib; from BatchRenameTool import BatchRenameTool; importlib.reload(BatchRenameTool); BatchRenameTool.instance = BatchRenameTool.BatchRenameController(%JsonPath)",
   "Root": {
     "SScrollBox": {
@@ -18,7 +18,7 @@
                       "AutoWidth": true,
                       "VAlign": "VAlign_Center",
                       "STextBlock": {
-                        "Text": "资产前缀 (Prefix): "
+                        "Text": "资源前缀："
                       }
                     },
                     {
@@ -35,12 +35,83 @@
               {
                 "AutoHeight": true,
                 "Padding": [0, 0, 0, 15],
-                "SButton": {
-                  "Aka": "btn_execute",
-                  "HAlign": "HAlign_Center",
-                  "ContentPadding": [20, 5],
-                  "Text": "重命名选中的资产",
-                  "OnClick": "BatchRenameTool.instance.execute_rename()"
+                "SHorizontalBox": {
+                  "Slots": [
+                    {
+                      "AutoWidth": true,
+                      "Padding": [0, 0, 20, 0],
+                      "SCheckBox": {
+                        "Aka": "chk_skip_prefixed",
+                        "IsChecked": true,
+                        "Content": {
+                          "STextBlock": {
+                            "Text": "跳过已有前缀的资源"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "AutoWidth": true,
+                      "SCheckBox": {
+                        "Aka": "chk_auto_conflict",
+                        "IsChecked": true,
+                        "Content": {
+                          "STextBlock": {
+                            "Text": "冲突时自动添加后缀"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "AutoHeight": true,
+                "Padding": [0, 0, 0, 15],
+                "SHorizontalBox": {
+                  "Slots": [
+                    {
+                      "FillWidth": 1.0,
+                      "Padding": [0, 0, 8, 0],
+                      "SButton": {
+                        "Aka": "btn_preview",
+                        "HAlign": "HAlign_Center",
+                        "ContentPadding": [20, 5],
+                        "Text": "预览",
+                        "OnClick": "BatchRenameTool.instance.preview_rename()"
+                      }
+                    },
+                    {
+                      "FillWidth": 1.0,
+                      "SButton": {
+                        "Aka": "btn_execute",
+                        "HAlign": "HAlign_Center",
+                        "ContentPadding": [20, 5],
+                        "Text": "执行重命名",
+                        "OnClick": "BatchRenameTool.instance.execute_rename()"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "AutoHeight": true,
+                "Padding": [0, 0, 0, 15],
+                "SBorder": {
+                  "Padding": 8,
+                  "BorderImage": {
+                    "Style": "FCoreStyle",
+                    "Brush": "ToolPanel.GroupBorder"
+                  },
+                  "Content": {
+                    "SMultiLineEditableTextBox": {
+                      "Aka": "txt_preview",
+                      "Text": "预览结果将显示在此处",
+                      "IsReadOnly": true,
+                      "AutoWrapText": false,
+                      "SelectAllTextWhenFocused": false
+                    }
+                  }
                 }
               },
               {
@@ -54,7 +125,7 @@
                   "Content": {
                     "STextBlock": {
                       "Aka": "txt_status",
-                      "Text": "就绪。请在内容浏览器中选中目标资产。",
+                      "Text": "准备完毕。在内容浏览器中选择资源并预览更改。",
                       "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
                     }
                   }
