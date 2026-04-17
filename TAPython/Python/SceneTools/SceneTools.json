@@ -1,6 +1,6 @@
 ﻿{
     "TabLabel": "场景工具集",
-    "InitTabSize": [360, 300],
+    "InitTabSize": [420, 360],
     "InitPyCmd": "import importlib; from SceneTools import SceneTools; importlib.reload(SceneTools); SceneTools.instance = SceneTools.SceneToolsController(%JsonPath)",
 
     "Root": {
@@ -347,6 +347,623 @@
                                                                     "ContentPadding": [30, 8],
                                                                     "Text": "显示已选",
                                                                     "OnClick": "SceneTools.instance.execute_show()"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "SExpandableArea": {
+                                    "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
+                                    "HeaderPadding": 3,
+                                    "HeaderContent": {
+                                        "STextBlock": {
+                                            "Text": "变换工具",
+                                            "Font": ["Segoe UI", "10", "Bold"]
+                                        }
+                                    },
+                                    "BodyContent": {
+                                        "SVerticalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 4, 8, 8],
+                                                    "STextBlock": {
+                                                        "Text": "对已选择的 Actor 执行位置归零、旋转归零、缩放归一或全重置。",
+                                                        "Font": ["Segoe UI", "9"],
+                                                        "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                        "AutoWrapText": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 0, 8, 8],
+                                                    "SVerticalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SButton": {
+                                                                                "Text": "位置归零",
+                                                                                "OnClick": "SceneTools.instance.execute_reset_location()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SButton": {
+                                                                                "Text": "旋转归零",
+                                                                                "OnClick": "SceneTools.instance.execute_reset_rotation()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SButton": {
+                                                                                "Text": "缩放归一",
+                                                                                "OnClick": "SceneTools.instance.execute_normalize_scale()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SButton": {
+                                                                                "Text": "全变换重置",
+                                                                                "OnClick": "SceneTools.instance.execute_reset_all_transform()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "SExpandableArea": {
+                                    "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
+                                    "HeaderPadding": 3,
+                                    "HeaderContent": {
+                                        "STextBlock": {
+                                            "Text": "标签 / 图层 / 分组",
+                                            "Font": ["Segoe UI", "10", "Bold"]
+                                        }
+                                    },
+                                    "BodyContent": {
+                                        "SVerticalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 4, 8, 8],
+                                                    "STextBlock": {
+                                                        "Text": "Tag 展示与写入逻辑对齐 UE5（读取状态→编辑→设置）。图层与分组单独应用。",
+                                                        "Font": ["Segoe UI", "9"],
+                                                        "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                        "AutoWrapText": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 0, 8, 8],
+                                                    "SVerticalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Text": "Tag"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_count_label",
+                                                                                "Text": "0 数组元素",
+                                                                                "ColorAndOpacity": [0.6, 0.6, 0.6, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " + ",
+                                                                                "OnClick": "SceneTools.instance.add_tag_row()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Aka": "btn_clear_tags_all",
+                                                                                "Text": "🗑",
+                                                                                "OnClick": "SceneTools.instance.execute_clear_tags_all()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "SButton": {
+                                                                    "Text": "读取选中 Actor 的 Tag 状态",
+                                                                    "OnClick": "SceneTools.instance.execute_sync_tag_state()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SBox": {
+                                                                    "Aka": "tag_row_0",
+                                                                    "Visibility": "Collapsed",
+                                                                    "Padding": 0,
+                                                                    "Content": {
+                                                                        "SHorizontalBox": {
+                                                                        "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_idx_0",
+                                                                                "Text": "索引[0]",
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "tag_val_0",
+                                                                                "Text": ""
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " x ",
+                                                                                "OnClick": "SceneTools.instance.remove_tag_row(0)"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                                }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SBox": {
+                                                                    "Aka": "tag_row_1",
+                                                                    "Visibility": "Collapsed",
+                                                                    "Padding": 0,
+                                                                    "Content": {
+                                                                        "SHorizontalBox": {
+                                                                        "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_idx_1",
+                                                                                "Text": "索引[1]",
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "tag_val_1",
+                                                                                "Text": ""
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " x ",
+                                                                                "OnClick": "SceneTools.instance.remove_tag_row(1)"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                                }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SBox": {
+                                                                    "Aka": "tag_row_2",
+                                                                    "Visibility": "Collapsed",
+                                                                    "Padding": 0,
+                                                                    "Content": {
+                                                                        "SHorizontalBox": {
+                                                                        "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_idx_2",
+                                                                                "Text": "索引[2]",
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "tag_val_2",
+                                                                                "Text": ""
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " x ",
+                                                                                "OnClick": "SceneTools.instance.remove_tag_row(2)"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                                }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SBox": {
+                                                                    "Aka": "tag_row_3",
+                                                                    "Visibility": "Collapsed",
+                                                                    "Padding": 0,
+                                                                    "Content": {
+                                                                        "SHorizontalBox": {
+                                                                        "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_idx_3",
+                                                                                "Text": "索引[3]",
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "tag_val_3",
+                                                                                "Text": ""
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " x ",
+                                                                                "OnClick": "SceneTools.instance.remove_tag_row(3)"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                                }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SBox": {
+                                                                    "Aka": "tag_row_4",
+                                                                    "Visibility": "Collapsed",
+                                                                    "Padding": 0,
+                                                                    "Content": {
+                                                                        "SHorizontalBox": {
+                                                                        "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_idx_4",
+                                                                                "Text": "索引[4]",
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "tag_val_4",
+                                                                                "Text": ""
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " x ",
+                                                                                "OnClick": "SceneTools.instance.remove_tag_row(4)"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                                }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SBox": {
+                                                                    "Aka": "tag_row_5",
+                                                                    "Visibility": "Collapsed",
+                                                                    "Padding": 0,
+                                                                    "Content": {
+                                                                        "SHorizontalBox": {
+                                                                        "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_idx_5",
+                                                                                "Text": "索引[5]",
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "tag_val_5",
+                                                                                "Text": ""
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " x ",
+                                                                                "OnClick": "SceneTools.instance.remove_tag_row(5)"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                                }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SBox": {
+                                                                    "Aka": "tag_row_6",
+                                                                    "Visibility": "Collapsed",
+                                                                    "Padding": 0,
+                                                                    "Content": {
+                                                                        "SHorizontalBox": {
+                                                                        "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_idx_6",
+                                                                                "Text": "索引[6]",
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "tag_val_6",
+                                                                                "Text": ""
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " x ",
+                                                                                "OnClick": "SceneTools.instance.remove_tag_row(6)"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                                }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 4],
+                                                                "SBox": {
+                                                                    "Aka": "tag_row_7",
+                                                                    "Visibility": "Collapsed",
+                                                                    "Padding": 0,
+                                                                    "Content": {
+                                                                        "SHorizontalBox": {
+                                                                        "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [0, 2, 8, 0],
+                                                                            "STextBlock": {
+                                                                                "Aka": "tag_idx_7",
+                                                                                "Text": "索引[7]",
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "tag_val_7",
+                                                                                "Text": ""
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [4, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Text": " x ",
+                                                                                "OnClick": "SceneTools.instance.remove_tag_row(7)"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                                }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 2, 0, 6],
+                                                                "STextBlock": {
+                                                                    "Aka": "tag_mixed_hint",
+                                                                    "Text": "多个 Actor 的 Tag 不一致（多个值）",
+                                                                    "ColorAndOpacity": [1.0, 0.7, 0.3, 1.0],
+                                                                    "AutoWrapText": true
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SButton": {
+                                                                    "Text": "设置 Tag 到已选 Actor（替换写入）",
+                                                                    "OnClick": "SceneTools.instance.execute_set_tags_to_actors()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "STextBlock": {
+                                                                    "Text": "图层（世界分区使用）"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SEditableTextBox": {
+                                                                    "Aka": "input_layer",
+                                                                    "Text": ""
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "STextBlock": {
+                                                                    "Text": "分组（Outliner 文件夹）"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SEditableTextBox": {
+                                                                    "Aka": "input_group",
+                                                                    "Text": ""
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SButton": {
+                                                                                "Text": "应用图层与分组到已选 Actor",
+                                                                                "OnClick": "SceneTools.instance.execute_apply_layer_group()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SButton": {
+                                                                                "Text": "清除分组",
+                                                                                "OnClick": "SceneTools.instance.execute_clear_group()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "SExpandableArea": {
+                                    "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
+                                    "HeaderPadding": 3,
+                                    "HeaderContent": {
+                                        "STextBlock": {
+                                            "Text": "Tag 导出",
+                                            "Font": ["Segoe UI", "10", "Bold"]
+                                        }
+                                    },
+                                    "BodyContent": {
+                                        "SVerticalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 4, 8, 8],
+                                                    "STextBlock": {
+                                                        "Text": "导出选中 Actor 名称与 Tag。留空路径时默认导出到桌面。",
+                                                        "Font": ["Segoe UI", "9"],
+                                                        "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                        "AutoWrapText": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 0, 8, 8],
+                                                    "SVerticalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "STextBlock": {
+                                                                    "Text": "导出路径"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SEditableTextBox": {
+                                                                    "Aka": "input_export_path",
+                                                                    "Text": ""
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "SButton": {
+                                                                    "Text": "导出已选 Actor Tag",
+                                                                    "OnClick": "SceneTools.instance.execute_export_actor_tags()"
                                                                 }
                                                             }
                                                         ]
