@@ -177,6 +177,12 @@
                 "tooltip": "场景工具集：按范围和类型批量选择，以及隐藏/显示 Actor 可见性控制。",
                 "ExtensionHookName": "OnToolBarChameleon",
                 "ChameleonTools": "../Python/SceneTools/SceneTools.json"
+            },
+            {
+                "name": "Batch Tag Tool",
+                "tooltip": "批量 Actor Tag 管理器：显式输入 + 交集显示 + Ctrl+Z 撤销。",
+                "ExtensionHookName": "OnToolBarChameleon",
+                "ChameleonTools": "../Python/BatchTagTool/BatchTagTool.json"
             }
         ]
     },

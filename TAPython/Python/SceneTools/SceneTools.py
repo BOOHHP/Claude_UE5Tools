@@ -41,66 +41,6 @@ class SceneToolsController:
         # 防止 set_checkbox_state 触发 OnCheckStateChanged 引起回调循环
         self._scope_updating = False
 
-        # Tag 动态列表状态（_tag_count 为当前显示行数，最多 _TAG_MAX 行）
-        self._TAG_MAX = 8
-        self._tag_count = 0
-        self._tag_mode = "indexed"  # indexed | mixed
-
-        # 选中状态监听：通过 Slate tick 回调实时检测选择变化
-        self._selection_hash = self._compute_selection_hash()
-        self._tick_frame_counter = 0
-        self._tick_interval = 15  # 约每 15 帧检测一次（~0.25s@60fps）
-        self._tick_handle = None
-        self._initial_sync_done = False  # 第一个 tick 强制同步（UI 尚未就绪时调用 set_visible 无效）
-        try:
-            self._tick_handle = unreal.register_slate_post_tick_callback(
-                self._on_tick_check_selection
-            )
-        except Exception as e:
-            unreal.log_warning(f"SceneTools: Slate tick 注册失败，需手动刷新 Tag: {str(e)}")
-
-    # ------------------------------------------------------------------
-    # 选中状态实时监听
-    # ------------------------------------------------------------------
-
-    def _on_tick_check_selection(self, delta_time):
-        """Slate tick 回调，节流检测选中 Actor 变化自动刷新 Tag 面板。"""
-        self._tick_frame_counter += 1
-        if self._tick_frame_counter < self._tick_interval:
-            return
-        self._tick_frame_counter = 0
-
-        try:
-            # 第一次 tick：UI 已完成渲染，强制全量同步一次再去隐藏多余行
-            if not self._initial_sync_done:
-                self._initial_sync_done = True
-                self._selection_hash = self._compute_selection_hash()
-                self.sync_tag_ui_from_selection()
-                return
-
-            new_hash = self._compute_selection_hash()
-            if new_hash != self._selection_hash:
-                self._selection_hash = new_hash
-                self.sync_tag_ui_from_selection()
-        except Exception:
-            pass
-
-    def _compute_selection_hash(self):
-        """计算当前选中 Actor 及其 Tag 的快速哈希，用于变化检测。"""
-        try:
-            selected = self._get_selected_actors()
-            if not selected:
-                return 0
-            parts = []
-            for a in selected:
-                name = a.get_name()
-                tags = ",".join(str(t) for t in getattr(a, "tags", []))
-                parts.append(f"{name}:{tags}")
-            parts.sort()
-            return hash("|".join(parts))
-        except Exception:
-            return -1
-
     # ------------------------------------------------------------------
     # 选择范围互斥逻辑
     # ------------------------------------------------------------------
@@ -327,153 +267,6 @@ class SceneToolsController:
             unreal.log_error(f"SceneTools execute_reset_transform: {error_msg}")
             self.data.set_text("txt_status", error_msg)
 
-    def add_tag_row(self):
-        if self._tag_mode == "mixed":
-            # mixed 模式：切换为 indexed 空列表，用户从头统一编辑
-            self._tag_mode = "indexed"
-            self._tag_count = 0
-            self._fill_tag_rows([])
-        if self._tag_count >= self._TAG_MAX:
-            self.data.set_text("txt_status", f"最多支持 {self._TAG_MAX} 个 Tag。")
-            return
-        self._tag_count += 1
-        self._refresh_tag_ui()
-
-    def remove_tag_row(self, i):
-        if self._tag_mode == "mixed" or i < 0 or i >= self._tag_count:
-            return
-        vals = [str(self.data.get_text(f"tag_val_{j}")) for j in range(self._tag_count)]
-        vals.pop(i)
-        self._tag_count -= 1
-        self._fill_tag_rows(vals)
-        self._refresh_tag_ui()
-
-    def execute_sync_tag_state(self):
-        self.sync_tag_ui_from_selection()
-
-    def sync_tag_ui_from_selection(self):
-        """按 UE 行为同步 Tag 展示：单选/多选一致显示索引；多选不一致显示“多个值”。"""
-        try:
-            selected = self._get_selected_actors()
-            if not selected:
-                self._tag_mode = "indexed"
-                self._tag_count = 0
-                self._fill_tag_rows([])
-                self._refresh_tag_ui()
-                return
-
-            all_tag_lists = [self._get_actor_tags(a) for a in selected]
-            first = all_tag_lists[0]
-            all_same = all(t == first for t in all_tag_lists[1:])
-
-            if all_same:
-                self._tag_mode = "indexed"
-                self._tag_count = min(len(first), self._TAG_MAX)
-                self._fill_tag_rows(first)
-                if len(first) > self._TAG_MAX:
-                    self.data.set_text("txt_status",
-                        f"Tag 数量超过 {self._TAG_MAX}，仅展示前 {self._TAG_MAX} 项。")
-            else:
-                self._tag_mode = "mixed"
-                self._tag_count = 0
-                self._fill_tag_rows([])
-
-            self._refresh_tag_ui()
-        except Exception as e:
-            unreal.log_warning(f"SceneTools sync_tag_ui_from_selection: {str(e)}")
-
-    def execute_set_tags_to_actors(self):
-        """将面板 Tag 列表完整替换写入已选 Actor（Replace-All，对齐 UE5）。"""
-        try:
-            selected = self._get_selected_actors_or_warn()
-            if not selected:
-                return
-
-            if self._tag_mode == "mixed":
-                self.data.set_text("txt_status",
-                    "Tag 不一致：请先点击「读取 Tag 状态」或「清空全部 Tag」。")
-                return
-
-            new_tags = self._collect_tag_values()
-            applied = 0
-            for actor in selected:
-                if self._set_actor_tags(actor, new_tags):
-                    applied += 1
-
-            self.sync_tag_ui_from_selection()
-            msg = f"Tag 已写入：{applied}/{len(selected)} 个 Actor，{len(new_tags)} 个 Tag。"
-            self.data.set_text("txt_status", msg)
-            unreal.log(f"SceneTools: {msg}")
-        except Exception as e:
-            error_msg = f"设置 Tag 失败：{str(e)}"
-            unreal.log_error(f"SceneTools execute_set_tags_to_actors: {error_msg}")
-            self.data.set_text("txt_status", error_msg)
-
-    def execute_clear_tags_all(self):
-        """清除已选 Actor 的全部 Tag 并刷新面板。"""
-        try:
-            selected = self._get_selected_actors_or_warn()
-            if not selected:
-                return
-
-            cleared = 0
-            for actor in selected:
-                if self._set_actor_tags(actor, []):
-                    cleared += 1
-
-            self.sync_tag_ui_from_selection()
-            msg = f"已清除 Tag：{cleared}/{len(selected)} 个 Actor。"
-            self.data.set_text("txt_status", msg)
-            unreal.log(f"SceneTools: {msg}")
-        except Exception as e:
-            error_msg = f"清除 Tag 失败：{str(e)}"
-            unreal.log_error(f"SceneTools execute_clear_tags_all: {error_msg}")
-            self.data.set_text("txt_status", error_msg)
-
-    def _refresh_tag_ui(self):
-        """更新数量标签、mixed 提示行、各索引行 show/hide。"""
-        try:
-            selected_count = len(self._get_selected_actors())
-            if self._tag_mode == "mixed":
-                self.data.set_text("tag_count_label", "多个值")
-            else:
-                self.data.set_text("tag_count_label", f"{self._tag_count} 数组元素")
-
-            try:
-                if self._tag_mode == "mixed":
-                    self.data.set_text("tag_mixed_hint", "多个 Actor 的 Tag 不一致（多个值）")
-                else:
-                    self.data.set_text("tag_mixed_hint", "")
-            except Exception:
-                pass
-
-            self.data.set_enabled("btn_clear_tags_all", selected_count > 0)
-
-            for i in range(self._TAG_MAX):
-                visible = (self._tag_mode == "indexed") and (i < self._tag_count)
-                self.data.set_visible(f"tag_row_{i}", visible)
-                if visible:
-                    self.data.set_text(f"tag_idx_{i}", f"索引[{i}]")
-        except Exception as e:
-            unreal.log_warning(f"SceneTools _refresh_tag_ui: {str(e)}")
-
-    def _collect_tag_values(self):
-        """读取所有可见 Tag 行的非空文本，返回列表。"""
-        result = []
-        for i in range(self._tag_count):
-            v = str(self.data.get_text(f"tag_val_{i}")).strip()
-            if v:
-                result.append(v)
-        return result
-
-    def _collect_tags_from_ui(self):
-        return self._collect_tag_values()
-
-    def _fill_tag_rows(self, tags):
-        """将 tags 写入 UI 各行（超出部分清空），不修改 _tag_count。"""
-        for i in range(self._TAG_MAX):
-            self.data.set_text(f"tag_val_{i}", tags[i] if i < len(tags) else "")
-
     def execute_apply_layer_group(self):
         """将图层与分组应用到已选 Actor（Tag 由专用「设置 Tag」按钮负责）。"""
         try:
@@ -508,9 +301,6 @@ class SceneToolsController:
             error_msg = f"应用图层/分组失败：{str(e)}"
             unreal.log_error(f"SceneTools execute_apply_layer_group: {error_msg}")
             self.data.set_text("txt_status", error_msg)
-
-    def execute_apply_tags_layers(self):
-        self.execute_apply_layer_group()
 
     def execute_clear_group(self):
         try:
@@ -566,7 +356,6 @@ class SceneToolsController:
             self.data.set_text("txt_status", error_msg)
 
     def on_panel_expansion_changed(self, _is_expanded):
-        self.sync_tag_ui_from_selection()
         self._resize_window_to_content()
 
     def _resize_window_to_content(self):
@@ -644,24 +433,6 @@ class SceneToolsController:
         except Exception:
             return []
 
-    def _get_actor_tags(self, actor):
-        return [str(tag) for tag in getattr(actor, "tags", [])]
-
-    def _set_actor_tags(self, actor, tags):
-        """用 tags 列表完整替换 actor 的标签（replace-all 语义）。"""
-        tag_names = [unreal.Name(t) for t in tags]
-        try:
-            actor.tags = tag_names
-            return True
-        except Exception:
-            pass
-        try:
-            actor.set_editor_property("tags", tag_names)
-            return True
-        except Exception:
-            unreal.log_warning(f"SceneTools: 无法设置 {actor.get_name()} 的 Tag")
-            return False
-
     def _export_rows_to_text_or_csv(self, export_path, rows):
         export_dir = os.path.dirname(export_path)
         if export_dir and not os.path.exists(export_dir):
@@ -687,27 +458,6 @@ class SceneToolsController:
         actor.set_actor_rotation(rotation, False)
         actor.set_actor_scale3d(scale)
         return True
-
-    def _add_tag_to_actor(self, actor, tag_text):
-        current_tags = [str(tag) for tag in getattr(actor, "tags", [])]
-        if tag_text in current_tags:
-            return False
-
-        try:
-            actor.tags.append(unreal.Name(tag_text))
-            return True
-        except Exception:
-            pass
-
-        # 兼容回退：通过 editor_property 重写 tags
-        try:
-            merged = list(current_tags)
-            merged.append(tag_text)
-            actor.set_editor_property("tags", merged)
-            return True
-        except Exception:
-            unreal.log_warning(f"SceneTools: 无法给 {actor.get_name()} 添加 Tag: {tag_text}")
-            return False
 
     def _apply_layer_to_actor(self, actor, layer_name):
         # 优先尝试静态库 API

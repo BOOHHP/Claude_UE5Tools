@@ -1,0 +1,265 @@
+{
+    "TabLabel": "批量 Tag 管理器",
+    "InitTabSize": [
+        460,
+        560
+    ],
+    "InitPyCmd": "import importlib; from BatchTagTool import BatchTagTool; importlib.reload(BatchTagTool); BatchTagTool.instance = BatchTagTool.BatchTagToolController(%JsonPath)",
+    "OnTabClosedCmd": "BatchTagTool.instance.on_closed() if BatchTagTool.instance else None",
+    "Root": {
+        "SScrollBox": {
+            "Aka": "batch_tag_scroll",
+            "Slots": [
+                {
+                    "Padding": [
+                        10,
+                        10,
+                        10,
+                        10
+                    ],
+                    "SVerticalBox": {
+                        "Slots": [
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
+                                    4
+                                ],
+                                "STextBlock": {
+                                    "Text": "1. 编辑 Tag 列表（完全原生体验）",
+                                    "Font": [
+                                        "Segoe UI",
+                                        "10",
+                                        "Bold"
+                                    ]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
+                                    6
+                                ],
+                                "STextBlock": {
+                                    "Aka": "text_selection_info",
+                                    "Text": "当前未选中任何 Actor。",
+                                    "Font": [
+                                        "Segoe UI",
+                                        "9"
+                                    ],
+                                    "ColorAndOpacity": [
+                                        0.7,
+                                        0.7,
+                                        0.7,
+                                        1.0
+                                    ],
+                                    "AutoWrapText": true
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
+                                    10
+                                ],
+                                "SBox": {
+                                    "MaxDesiredHeight": 320,
+                                    "MinDesiredHeight": 160,
+                                    "Content": {
+                                        "SDetailsView": {
+                                            "Aka": "details_tags",
+                                            "AllowSearch": false,
+                                            "NameAreaSettings": "HideNameArea",
+                                            "ShowScrollBar": true
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
+                                    4
+                                ],
+                                "STextBlock": {
+                                    "Text": "2. 将列表同步给已选 Actor",
+                                    "Font": [
+                                        "Segoe UI",
+                                        "10",
+                                        "Bold"
+                                    ]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
+                                    6
+                                ],
+                                "STextBlock": {
+                                    "Text": "增量合并：只补齐新增 Tag，不动 Actor 独有的 Tag（安全）\n完全覆盖：把 Actor 的 Tag 改成和列表一模一样（会删除独有 Tag）",
+                                    "Font": [
+                                        "Segoe UI",
+                                        "9"
+                                    ],
+                                    "ColorAndOpacity": [
+                                        0.65,
+                                        0.65,
+                                        0.65,
+                                        1.0
+                                    ],
+                                    "AutoWrapText": true
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
+                                    10
+                                ],
+                                "SHorizontalBox": {
+                                    "Slots": [
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [
+                                                0,
+                                                0,
+                                                5,
+                                                0
+                                            ],
+                                            "SButton": {
+                                                "Aka": "btn_apply_merge",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [
+                                                    10,
+                                                    6
+                                                ],
+                                                "Text": "➕ 增量合并到已选",
+                                                "ToolTipText": "将列表中的 Tag 追加给每个已选 Actor，不会删除 Actor 独有的 Tag。",
+                                                "OnClick": "BatchTagTool.instance.on_apply_merge()"
+                                            }
+                                        },
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [
+                                                5,
+                                                0,
+                                                0,
+                                                0
+                                            ],
+                                            "SButton": {
+                                                "Aka": "btn_apply_override",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [
+                                                    10,
+                                                    6
+                                                ],
+                                                "Text": "⚠️ 完全覆盖已选",
+                                                "ToolTipText": "危险：将每个已选 Actor 的 Tag 完全替换为列表内容。",
+                                                "OnClick": "BatchTagTool.instance.on_apply_override()"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
+                                    10
+                                ],
+                                "SHorizontalBox": {
+                                    "Slots": [
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [
+                                                0,
+                                                0,
+                                                5,
+                                                0
+                                            ],
+                                            "SButton": {
+                                                "Aka": "btn_reload_intersection",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [
+                                                    8,
+                                                    4
+                                                ],
+                                                "Text": "🔄 重读交集",
+                                                "ToolTipText": "重新计算已选 Actor 的 Tag 交集并刷新上方列表。",
+                                                "OnClick": "BatchTagTool.instance.on_reload_intersection()"
+                                            }
+                                        },
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [
+                                                5,
+                                                0,
+                                                0,
+                                                0
+                                            ],
+                                            "SButton": {
+                                                "Aka": "btn_clear_proxy",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [
+                                                    8,
+                                                    4
+                                                ],
+                                                "Text": "🧹 清空列表",
+                                                "ToolTipText": "仅清空上方列表（不影响 Actor）。",
+                                                "OnClick": "BatchTagTool.instance.on_clear_proxy()"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                "SBorder": {
+                                    "Padding": 8,
+                                    "BorderImage": {
+                                        "Style": "FCoreStyle",
+                                        "Brush": "ToolPanel.GroupBorder"
+                                    },
+                                    "Content": {
+                                        "STextBlock": {
+                                            "Aka": "text_status",
+                                            "Text": "就绪。选中 Actor 后将自动读取 Tag 交集到列表。",
+                                            "ColorAndOpacity": [
+                                                0.85,
+                                                0.85,
+                                                0.85,
+                                                1.0
+                                            ],
+                                            "AutoWrapText": true
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}
