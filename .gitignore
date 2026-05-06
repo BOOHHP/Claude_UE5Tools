@@ -4,6 +4,8 @@ Thumbs.db
 Desktop.ini
 .idea/
 .vscode/
+.agents/
+.claude/
 
 # Python
 __pycache__/
