@@ -127,6 +127,27 @@
                                     0,
                                     0,
                                     0,
+                                    8
+                                ],
+                                "SCheckBox": {
+                                    "Aka": "chk_confirm_override",
+                                    "IsChecked": false,
+                                    "Content": {
+                                        "STextBlock": {
+                                            "Text": "我确认允许完全覆盖并删除 Actor 独有 Tag",
+                                            "Font": ["Segoe UI", "9"],
+                                            "ColorAndOpacity": [0.95, 0.72, 0.35, 1.0],
+                                            "AutoWrapText": true
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [
+                                    0,
+                                    0,
+                                    0,
                                     10
                                 ],
                                 "SHorizontalBox": {
@@ -304,13 +325,33 @@
                             {
                                 "AutoHeight": true,
                                 "Padding": [0, 0, 0, 0],
-                                "SButton": {
-                                    "Aka": "btn_select_by_tag",
-                                    "HAlign": "HAlign_Center",
-                                    "ContentPadding": [10, 4],
-                                    "Text": "🎯 选中场景中所有持有所选 Tag 的 Actor",
-                                    "ToolTipText": "在所有已加载关卡中查找拥有列表中所选 Tag 的 Actor，并替换当前选择。",
-                                    "OnClick": "BatchTagTool.instance.on_select_by_tag()"
+                                "SHorizontalBox": {
+                                    "Slots": [
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [0, 0, 5, 0],
+                                            "SButton": {
+                                                "Aka": "btn_select_by_tag",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [10, 4],
+                                                "Text": "🎯 选中持有所选 Tag 的 Actor",
+                                                "ToolTipText": "在所有已加载关卡中查找拥有列表中所选 Tag 的 Actor，并替换当前选择。",
+                                                "OnClick": "BatchTagTool.instance.on_select_by_tag()"
+                                            }
+                                        },
+                                        {
+                                            "AutoWidth": true,
+                                            "Padding": [5, 0, 0, 0],
+                                            "SButton": {
+                                                "Aka": "btn_clear_ni_selection",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [10, 4],
+                                                "Text": "清除 Tag 选择",
+                                                "ToolTipText": "清空非交集 Tag 列表中的选择状态。",
+                                                "OnClick": "BatchTagTool.instance.on_clear_ni_selection()"
+                                            }
+                                        }
+                                    ]
                                 }
                             }
                         ]

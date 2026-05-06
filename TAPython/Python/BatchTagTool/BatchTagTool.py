@@ -41,10 +41,12 @@ class BatchTagToolController:
         self._tick_handle = None
         self._initial_sync_done = False
         self._selection_hash = 0
+        self._tick_error_reported = False
 
         # 非交集列表状态：items 与选中 Tag 集合
         self._ni_items_cache = []
         self._ni_selected_tags = set()
+        self._list_view_api_warning_reported = False
 
         # 首次绑定代理到 SDetailsView（延迟到首次 tick —— 此时 UI 已就绪）
         try:
@@ -57,12 +59,16 @@ class BatchTagToolController:
     # ------------------------------------------------------------------
 
     def on_closed(self):
+        global instance
         try:
             if self._tick_handle is not None:
                 unreal.unregister_slate_post_tick_callback(self._tick_handle)
                 self._tick_handle = None
         except Exception as e:
             unreal.log_warning(f"BatchTagTool on_closed: {str(e)}")
+        finally:
+            if instance is self:
+                instance = None
 
     # ------------------------------------------------------------------
     # Slate tick：自动检测选中变化
@@ -87,8 +93,15 @@ class BatchTagToolController:
             if new_hash != self._selection_hash:
                 self._selection_hash = new_hash
                 self._sync_proxy_from_selection()
-        except Exception:
-            pass
+        except Exception as e:
+            if not self._tick_error_reported:
+                self._tick_error_reported = True
+                msg = f"自动同步失败：{str(e)}。可手动点击“重读交集”。"
+                unreal.log_warning(f"BatchTagTool _on_tick: {msg}")
+                try:
+                    self.data.set_text("text_status", f"⚠️ {msg}")
+                except Exception:
+                    pass
 
     def _bind_proxy_to_details_view(self):
         try:
@@ -104,8 +117,9 @@ class BatchTagToolController:
                 return 0
             parts = []
             for a in selected:
-                tags = ",".join(str(t) for t in getattr(a, "tags", []))
-                parts.append(f"{a.get_name()}:{tags}")
+                tags = ",".join(sorted(self._normalize_tag_list(getattr(a, "tags", []))))
+                actor_id = self._get_actor_identifier(a)
+                parts.append(f"{actor_id}:{tags}")
             parts.sort()
             return hash("|".join(parts))
         except Exception:
@@ -127,7 +141,7 @@ class BatchTagToolController:
                 self.data.set_text("text_status", "就绪。选中 Actor 后将自动读取 Tag 交集到列表。")
                 return
 
-            tag_sets = [set(str(t) for t in getattr(a, "tags", [])) for a in selected]
+            tag_sets = [set(self._normalize_tag_list(getattr(a, "tags", []))) for a in selected]
             common = tag_sets[0].copy()
             union = set()
             for s in tag_sets:
@@ -151,18 +165,18 @@ class BatchTagToolController:
         if self.tag_proxy is None:
             return
         try:
-            names = [unreal.Name(str(t)) for t in tag_strs]
+            names = [unreal.Name(t) for t in self._normalize_tag_list(tag_strs)]
             self.tag_proxy.set_editor_property("edit_tags", names)
         except Exception:
             # 回退：直接赋值
             try:
-                self.tag_proxy.edit_tags = [unreal.Name(str(t)) for t in tag_strs]
+                self.tag_proxy.edit_tags = [unreal.Name(t) for t in self._normalize_tag_list(tag_strs)]
             except Exception as e:
                 unreal.log_warning(f"BatchTagTool _set_proxy_tags: {str(e)}")
 
     def _update_ni_list(self, ni_tags, selected_count):
         """刷新非交集 Tag 列表 UI 与提示文字。"""
-        items = [str(t) for t in ni_tags]
+        items = self._normalize_tag_list(ni_tags)
         # 缓存一份；仅保留仍然存在于新 items 中的选中项
         self._ni_items_cache = items
         self._ni_selected_tags = {t for t in self._ni_selected_tags if t in items}
@@ -178,7 +192,13 @@ class BatchTagToolController:
             except Exception as e:
                 unreal.log_warning(f"BatchTagTool _update_ni_list {method_name}: {str(e)}")
         if not ok:
-            unreal.log_warning("BatchTagTool: 未找到可用的 set_list_view_items API")
+            if not self._list_view_api_warning_reported:
+                self._list_view_api_warning_reported = True
+                unreal.log_warning("BatchTagTool: 未找到可用的 set_list_view_items API")
+                try:
+                    self.data.set_text("text_status", "⚠️ 非交集列表 API 不可用，请检查 TAPython 版本。")
+                except Exception:
+                    pass
         try:
             if selected_count == 0:
                 hint = "选中 2 个及以上 Actor 后，此处将列出非共有的 Tag。"
@@ -186,6 +206,8 @@ class BatchTagToolController:
                 hint = "仅选中 1 个 Actor，无非共有 Tag（可改为按上方列表中的 Tag 反向选中场景物体）。"
             elif not ni_tags:
                 hint = f"已选中 {selected_count} 个 Actor，所有 Tag 均为共有，无非交集 Tag。"
+            elif self._ni_selected_tags:
+                hint = self._build_ni_info_text()
             else:
                 hint = f"已选中 {selected_count} 个 Actor，共 {len(ni_tags)} 个非共有 Tag。双击或选中后点击下方按钮可反向选中场景中持有该 Tag 的 Actor。"
             self.data.set_text("text_ni_info", hint)
@@ -203,7 +225,7 @@ class BatchTagToolController:
                 raw = self.tag_proxy.edit_tags
             except Exception:
                 return []
-        return [str(t) for t in (raw or []) if str(t).strip()]
+        return self._normalize_tag_list(raw or [])
 
     # ------------------------------------------------------------------
     # 按钮回调
@@ -213,6 +235,12 @@ class BatchTagToolController:
         self._apply_to_actors(override=False)
 
     def on_apply_override(self):
+        if not self._get_checkbox_checked("chk_confirm_override"):
+            self.data.set_text(
+                "text_status",
+                "⚠️ 完全覆盖会删除 Actor 独有 Tag。请先勾选确认框。",
+            )
+            return
         self._apply_to_actors(override=True)
 
     def on_reload_intersection(self):
@@ -229,14 +257,24 @@ class BatchTagToolController:
         except Exception as e:
             unreal.log_error(f"BatchTagTool on_clear_proxy: {str(e)}")
 
+    def on_clear_ni_selection(self):
+        try:
+            self._ni_selected_tags = set()
+            self._set_list_view_selection([])
+            self.data.set_text("text_ni_info", self._build_ni_info_text())
+            self.data.set_text("text_status", "已清空非交集 Tag 选择。")
+        except Exception as e:
+            unreal.log_error(f"BatchTagTool on_clear_ni_selection: {str(e)}")
+
     def on_select_by_tag(self, *args, **kwargs):
         """读取非交集列表中所选 Tag，反向选中场景中所有持有该 Tag 的 Actor。"""
         try:
             selected_tags = self._get_selected_ni_tags()
             if not selected_tags:
+                current_indexes = self._get_list_view_selected_indexes("list_ni_tags")
                 self.data.set_text(
                     "text_status",
-                    "⚠️ 请先在下方非交集列表中选中至少一个 Tag。",
+                    f"⚠️ 请先在下方非交集列表中选中至少一个 Tag。列表 {len(self._ni_items_cache)} 项，当前下标 {current_indexes}，缓存选择 {len(self._ni_selected_tags)} 项。",
                 )
                 return
 
@@ -245,11 +283,11 @@ class BatchTagToolController:
                 self.data.set_text("text_status", "⚠️ 当前关卡内未发现任何 Actor。")
                 return
 
-            tag_set = set(selected_tags)
+            tag_set = set(self._normalize_tag_list(selected_tags))
             matched = []
             for a in all_actors:
                 try:
-                    actor_tags = set(str(t) for t in (getattr(a, "tags", []) or []))
+                    actor_tags = set(self._normalize_tag_list(getattr(a, "tags", []) or []))
                 except Exception:
                     continue
                 if actor_tags & tag_set:
@@ -262,11 +300,13 @@ class BatchTagToolController:
                 )
                 return
 
-            self._set_level_selection(matched)
+            if not self._set_level_selection(matched):
+                self.data.set_text("text_status", "❌ 找到匹配 Actor，但设置编辑器选择失败。")
+                return
             tag_label = ", ".join(sorted(tag_set))
             self.data.set_text(
                 "text_status",
-                f"✅ 已按 Tag [{tag_label}] 选中 {len(matched)} 个 Actor。",
+                f"✅ 已按 Tag [{tag_label}] 选中 {len(matched)} 个 Actor（扫描 {len(all_actors)} 个）。",
             )
             unreal.log(
                 f"BatchTagTool: select_by_tag tags={sorted(tag_set)} matched={len(matched)}"
@@ -293,23 +333,31 @@ class BatchTagToolController:
             target_names = [unreal.Name(t) for t in target_strs]
 
             action_name = "Override Actor Tags" if override else "Merge Actor Tags"
-            changed = 0
+            stats = {"changed": 0, "failed": 0, "skipped": 0}
+            transaction_fallback = False
 
             try:
                 with unreal.ScopedEditorTransaction(action_name):
-                    changed = self._write_target_tags(selected, target_names, override)
+                    stats = self._write_target_tags(selected, target_names, override)
             except Exception as e:
                 # Transaction 构造失败 -> 退化为无事务
+                transaction_fallback = True
                 unreal.log_warning(f"BatchTagTool: Transaction 失败，回退无事务执行: {str(e)}")
-                changed = self._write_target_tags(selected, target_names, override)
+                stats = self._write_target_tags(selected, target_names, override)
 
             mode_label = "完全覆盖" if override else "增量合并"
+            prefix = "⚠️" if transaction_fallback or stats["failed"] else "✅"
+            fallback_note = "（事务失败，可能不可撤销）" if transaction_fallback else ""
             msg = (
-                f"✅ [{mode_label}] 完成：{changed}/{len(selected)} 个 Actor 有变更，"
-                f"当前列表含 {len(target_strs)} 个 Tag。"
+                f"{prefix} [{mode_label}] 完成：变更 {stats['changed']}，"
+                f"跳过 {stats['skipped']}，失败 {stats['failed']} / {len(selected)}，"
+                f"当前列表含 {len(target_strs)} 个 Tag。{fallback_note}"
             )
             self.data.set_text("text_status", msg)
             unreal.log(f"BatchTagTool: {msg}")
+
+            if override:
+                self._set_checkbox_checked("chk_confirm_override", False)
 
             # 刷新交集（写回之后状态已变）
             self._selection_hash = self._compute_selection_hash()
@@ -320,49 +368,151 @@ class BatchTagToolController:
             self.data.set_text("text_status", error_msg)
 
     def _write_target_tags(self, selected, target_names, override):
-        """对每个 Actor 执行 merge / override，返回实际有变更的数量。"""
-        changed = 0
+        """对每个 Actor 执行 merge / override，返回变更统计。"""
+        stats = {"changed": 0, "failed": 0, "skipped": 0}
         for actor in selected:
             try:
                 current = list(getattr(actor, "tags", []) or [])
 
                 if override:
                     # 以字符串集合比较，避免 FName 与 str 的差异导致误判变更
-                    if [str(t) for t in current] != [str(t) for t in target_names]:
-                        self._commit_actor_tags(actor, target_names)
-                        changed += 1
+                    if self._normalize_tag_list(current) != self._normalize_tag_list(target_names):
+                        if self._commit_actor_tags(actor, target_names):
+                            stats["changed"] += 1
+                        else:
+                            stats["failed"] += 1
+                    else:
+                        stats["skipped"] += 1
                 else:
-                    current_strs = [str(t) for t in current]
+                    current_strs = self._normalize_tag_list(current)
                     merged = list(current)
                     added = False
                     for t in target_names:
-                        if str(t) not in current_strs:
+                        tag_str = self._normalize_tag_name(t)
+                        if tag_str and tag_str not in current_strs:
                             merged.append(t)
-                            current_strs.append(str(t))
+                            current_strs.append(tag_str)
                             added = True
                     if added:
-                        self._commit_actor_tags(actor, merged)
-                        changed += 1
+                        if self._commit_actor_tags(actor, merged):
+                            stats["changed"] += 1
+                        else:
+                            stats["failed"] += 1
+                    else:
+                        stats["skipped"] += 1
             except Exception as e:
+                stats["failed"] += 1
                 unreal.log_warning(
                     f"BatchTagTool: Actor {actor.get_name()} 写入失败 - {str(e)}"
                 )
-        return changed
+        return stats
 
     def _commit_actor_tags(self, actor, tag_names):
         """登记 Undo 并写入 actor.tags。"""
         try:
             actor.modify()
-        except Exception:
-            pass
+        except Exception as e:
+            unreal.log_warning(f"BatchTagTool: Actor {actor.get_name()} modify 失败 - {str(e)}")
         try:
             actor.tags = tag_names
+            return True
         except Exception:
-            actor.set_editor_property("tags", tag_names)
+            try:
+                actor.set_editor_property("tags", tag_names)
+                return True
+            except Exception as e:
+                unreal.log_warning(f"BatchTagTool: Actor {actor.get_name()} Tag 提交失败 - {str(e)}")
+                return False
 
     # ------------------------------------------------------------------
     # 工具方法
     # ------------------------------------------------------------------
+
+    def _normalize_tag_name(self, tag):
+        """统一 Tag 字符串格式，过滤空值。"""
+        try:
+            text = str(tag).strip()
+        except Exception:
+            return ""
+        if not text or text == "None":
+            return ""
+        return text
+
+    def _normalize_tag_list(self, tags):
+        """返回去重且保留原顺序的 Tag 字符串列表。"""
+        normalized = []
+        seen = set()
+        for tag in tags or []:
+            text = self._normalize_tag_name(tag)
+            if text and text not in seen:
+                normalized.append(text)
+                seen.add(text)
+        return normalized
+
+    def _get_actor_identifier(self, actor):
+        """用于选中变化 hash 的稳定 Actor 标识。"""
+        try:
+            return actor.get_path_name()
+        except Exception:
+            try:
+                return actor.get_name()
+            except Exception:
+                return str(actor)
+
+    def _get_checkbox_checked(self, aka):
+        """读取复选框状态，兼容不同 TAPython API 名称。"""
+        for method_name in ("get_is_checked", "get_checkbox_state"):
+            fn = getattr(self.data, method_name, None)
+            if fn is None:
+                continue
+            try:
+                return bool(fn(aka))
+            except Exception:
+                continue
+        return False
+
+    def _set_checkbox_checked(self, aka, checked):
+        """设置复选框状态，兼容不同 TAPython API 名称。"""
+        for method_name in ("set_is_checked", "set_checkbox_state", "set_check_boxe_is_checked"):
+            fn = getattr(self.data, method_name, None)
+            if fn is None:
+                continue
+            try:
+                fn(aka, checked)
+                return True
+            except Exception:
+                continue
+        return False
+
+    def _get_list_view_selected_indexes(self, aka):
+        """读取 SListView 当前选中下标。"""
+        fn = getattr(self.data, "get_list_view_items", None)
+        if fn is None:
+            return []
+        try:
+            ret = fn(aka)
+            if isinstance(ret, tuple) and len(ret) >= 2 and ret[1] is not None:
+                indexes = []
+                for i in ret[1]:
+                    try:
+                        indexes.append(int(i))
+                    except Exception:
+                        continue
+                return indexes
+        except Exception as e:
+            unreal.log_warning(f"BatchTagTool _get_list_view_selected_indexes: {str(e)}")
+        return []
+
+    def _set_list_view_selection(self, indexes):
+        fn = getattr(self.data, "set_list_view_selections", None)
+        if fn is None:
+            return False
+        try:
+            fn("list_ni_tags", list(indexes))
+            return True
+        except Exception as e:
+            unreal.log_warning(f"BatchTagTool _set_list_view_selection: {str(e)}")
+            return False
 
     def _get_selected_actors(self):
         try:
@@ -410,8 +560,27 @@ class BatchTagToolController:
             return False
 
     def _get_selected_ni_tags(self):
-        """返回用户在非交集列表中选中的 Tag（由 OnSelectionChanged 维护）。"""
+        """返回非交集列表中当前选中的 Tag。
+
+        优先在按钮点击时主动读取 SListView 当前选中下标；若点击按钮导致
+        列表丢失焦点或当前 TAPython 版本取不到下标，则回退到
+        OnSelectionChanged 维护的缓存。
+        """
+        selected_from_view = self._get_selected_ni_tags_from_view()
+        if selected_from_view:
+            self._ni_selected_tags = set(selected_from_view)
+            return selected_from_view
         return [t for t in self._ni_items_cache if t in self._ni_selected_tags]
+
+    def _get_selected_ni_tags_from_view(self):
+        indexes = self._get_list_view_selected_indexes("list_ni_tags")
+        if not indexes:
+            return []
+        result = []
+        for index in indexes:
+            if 0 <= index < len(self._ni_items_cache):
+                result.append(self._ni_items_cache[index])
+        return result
 
     # ------------------------------------------------------------------
     # SListView 事件回调
@@ -424,32 +593,21 @@ class BatchTagToolController:
         get_list_view_items() 拿到全量选中下标，避免单/多选下标不同步。
         """
         try:
-            indexes = []
-            fn = getattr(self.data, "get_list_view_items", None)
-            if fn is not None:
-                try:
-                    ret = fn("list_ni_tags")
-                    if isinstance(ret, tuple) and len(ret) >= 2 and ret[1] is not None:
-                        indexes = list(ret[1])
-                except Exception:
-                    pass
+            indexes = self._get_list_view_selected_indexes("list_ni_tags")
 
             if indexes:
-                selected = set()
-                for i in indexes:
-                    try:
-                        idx = int(i)
-                    except Exception:
-                        continue
-                    if 0 <= idx < len(self._ni_items_cache):
-                        selected.add(self._ni_items_cache[idx])
+                selected = set(self._get_selected_ni_tags_from_view())
                 self._ni_selected_tags = selected
             else:
                 # 单选模式下老版本可能不返回 indexes：退化用 %item
-                if item is None or item == "":
+                try:
+                    index_value = int(index)
+                except Exception:
+                    index_value = None
+                if index_value == -1 or item is None or item == "":
                     self._ni_selected_tags = set()
                 else:
-                    s = str(item)
+                    s = self._normalize_tag_name(item)
                     if s in self._ni_items_cache:
                         self._ni_selected_tags = {s}
 
@@ -462,8 +620,9 @@ class BatchTagToolController:
 
     def on_ni_double_click(self, item=None, index=None):
         """双击某项 → 以该单个 Tag 执行选择。"""
-        if item is not None and str(item).strip():
-            self._ni_selected_tags = {str(item)}
+        tag = self._normalize_tag_name(item)
+        if tag:
+            self._ni_selected_tags = {tag}
         self.on_select_by_tag()
 
     def _build_ni_info_text(self):
@@ -472,7 +631,7 @@ class BatchTagToolController:
         if n_total == 0:
             return "选中 2 个及以上 Actor 后，此处将列出非共有的 Tag。"
         if n_sel == 0:
-            return f"共 {n_total} 个非共有 Tag。在上方列表中点击选中后，点下方按钮反向选中 Actor。"
+            return f"共 {n_total} 个非共有 Tag。在下方列表中点击选中后，点下方按钮反向选中 Actor。"
         return f"共 {n_total} 个非共有 Tag，已选中 {n_sel} 个。点下方按钮反向选中场景中持有这些 Tag 的 Actor。"
 
 
