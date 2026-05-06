@@ -255,6 +255,63 @@
                                         }
                                     }
                                 }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 14, 0, 4],
+                                "STextBlock": {
+                                    "Text": "3. 非交集 Tag（仅部分已选 Actor 拥有）",
+                                    "Font": ["Segoe UI", "10", "Bold"]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "STextBlock": {
+                                    "Aka": "text_ni_info",
+                                    "Text": "选中 2 个及以上 Actor 后，此处将列出非共有的 Tag。",
+                                    "Font": ["Segoe UI", "9"],
+                                    "ColorAndOpacity": [0.65, 0.65, 0.65, 1.0],
+                                    "AutoWrapText": true
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "SBox": {
+                                    "MaxDesiredHeight": 200,
+                                    "MinDesiredHeight": 100,
+                                    "Content": {
+                                        "SListView": {
+                                            "Aka": "list_ni_tags",
+                                            "ItemHeight": 18,
+                                            "ListItemsSource": [],
+                                            "SHeaderRow": {
+                                                "Columns": [
+                                                    {
+                                                        "DefaultLabel": "Tag（点击选中，Ctrl/Shift 多选；再点下方按钮）",
+                                                        "FillWidth": 1
+                                                    }
+                                                ]
+                                            },
+                                            "SelectionMode": "Multi",
+                                            "OnSelectionChanged": "BatchTagTool.instance.on_ni_selection_changed(%item, %index)",
+                                            "OnMouseButtonDoubleClick": "BatchTagTool.instance.on_ni_double_click(%item, %index)"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 0],
+                                "SButton": {
+                                    "Aka": "btn_select_by_tag",
+                                    "HAlign": "HAlign_Center",
+                                    "ContentPadding": [10, 4],
+                                    "Text": "🎯 选中场景中所有持有所选 Tag 的 Actor",
+                                    "ToolTipText": "在所有已加载关卡中查找拥有列表中所选 Tag 的 Actor，并替换当前选择。",
+                                    "OnClick": "BatchTagTool.instance.on_select_by_tag()"
+                                }
                             }
                         ]
                     }
