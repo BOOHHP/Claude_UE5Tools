@@ -306,6 +306,202 @@
                                     "HeaderPadding": 3,
                                     "HeaderContent": {
                                         "STextBlock": {
+                                            "Text": "落地检测",
+                                            "Font": ["Segoe UI", "10", "Bold"]
+                                        }
+                                    },
+                                    "BodyContent": {
+                                        "SVerticalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 4, 8, 8],
+                                                    "STextBlock": {
+                                                        "Text": "检测已选 Actor 底部到地面的偏移，可先预览再执行修正。",
+                                                        "Font": ["Segoe UI", "9"],
+                                                        "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                        "AutoWrapText": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 0, 8, 8],
+                                                    "SVerticalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SVerticalBox": {
+                                                                                "Slots": [
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "STextBlock": { "Text": "碰撞 Profile" }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "SEditableTextBox": {
+                                                                                            "Aka": "input_ground_profile",
+                                                                                            "Text": "BlockAll"
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SVerticalBox": {
+                                                                                "Slots": [
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "STextBlock": { "Text": "最大射线距离" }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "SEditableTextBox": {
+                                                                                            "Aka": "input_ground_max_distance",
+                                                                                            "Text": "5000"
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SVerticalBox": {
+                                                                                "Slots": [
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "STextBlock": { "Text": "修正阈值" }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "SEditableTextBox": {
+                                                                                            "Aka": "input_ground_threshold",
+                                                                                            "Text": "1"
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SVerticalBox": {
+                                                                                "Slots": [
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "STextBlock": { "Text": "地面偏移" }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "SEditableTextBox": {
+                                                                                            "Aka": "input_ground_offset",
+                                                                                            "Text": "0"
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SVerticalBox": {
+                                                                                "Slots": [
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "STextBlock": { "Text": "起始偏移" }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "SEditableTextBox": {
+                                                                                            "Aka": "input_ground_start_offset",
+                                                                                            "Text": "50"
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SButton": {
+                                                                                "Aka": "btn_ground_preview",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "预览落地偏移",
+                                                                                "OnClick": "SceneTools.instance.preview_ground_snap()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SButton": {
+                                                                                "Aka": "btn_ground_execute",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "执行落地修正",
+                                                                                "OnClick": "SceneTools.instance.execute_ground_snap()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "SBorder": {
+                                                                    "Padding": 8,
+                                                                    "BorderImage": {
+                                                                        "Style": "FCoreStyle",
+                                                                        "Brush": "ToolPanel.GroupBorder"
+                                                                    },
+                                                                    "Content": {
+                                                                        "SMultiLineEditableTextBox": {
+                                                                            "Aka": "txt_ground_snap_preview",
+                                                                            "Text": "预览结果将显示在此处。",
+                                                                            "IsReadOnly": true,
+                                                                            "AutoWrapText": false
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "SExpandableArea": {
+                                    "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
+                                    "HeaderPadding": 3,
+                                    "HeaderContent": {
+                                        "STextBlock": {
                                             "Text": "隐藏工具",
                                             "Font": ["Segoe UI", "10", "Bold"]
                                         }

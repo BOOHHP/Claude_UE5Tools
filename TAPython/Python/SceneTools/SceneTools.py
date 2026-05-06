@@ -40,6 +40,7 @@ class SceneToolsController:
         self.scope_all = False
         # 防止 set_checkbox_state 触发 OnCheckStateChanged 引起回调循环
         self._scope_updating = False
+        self._last_ground_snap_plan = []
 
     # ------------------------------------------------------------------
     # 选择范围互斥逻辑
@@ -355,6 +356,73 @@ class SceneToolsController:
             unreal.log_error(f"SceneTools execute_export_actor_tags: {error_msg}")
             self.data.set_text("txt_status", error_msg)
 
+    # ------------------------------------------------------------------
+    # Iteration 2：Actor 落地检测
+    # ------------------------------------------------------------------
+
+    def preview_ground_snap(self):
+        try:
+            selected_actors = self._get_selected_actors_or_warn()
+            if not selected_actors:
+                return
+
+            plan, summary = self._build_ground_snap_plan(selected_actors)
+            self._last_ground_snap_plan = plan
+
+            preview_text = self._format_ground_snap_preview(plan, summary)
+            self.data.set_text("txt_ground_snap_preview", preview_text)
+
+            msg = (
+                f"落地预览完成：需修正 {summary['ready']}，已贴地 {summary['within_threshold']}，"
+                f"未命中 {summary['missed']}，失败 {summary['failed']}，共 {summary['total']}。"
+            )
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"落地预览失败：{str(e)}"
+            unreal.log_error(f"SceneTools preview_ground_snap: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def execute_ground_snap(self):
+        try:
+            selected_actors = self._get_selected_actors_or_warn()
+            if not selected_actors:
+                return
+
+            plan, summary = self._build_ground_snap_plan(selected_actors)
+            self._last_ground_snap_plan = plan
+
+            moved = 0
+            failed = summary["failed"]
+            for item in plan:
+                if item["action"] != "snap":
+                    continue
+
+                actor = item["actor"]
+                try:
+                    location = actor.get_actor_location()
+                    new_location = unreal.Vector(location.x, location.y, location.z + item["delta_z"])
+                    actor.set_actor_location(new_location, False, False)
+                    moved += 1
+                except Exception as e:
+                    failed += 1
+                    unreal.log_warning(f"SceneTools: 落地修正失败 {item['name']} - {str(e)}")
+
+            result_msg = (
+                f"落地执行完成：修正 {moved}，已贴地 {summary['within_threshold']}，"
+                f"未命中 {summary['missed']}，失败 {failed}，共 {summary['total']}。"
+            )
+            self.data.set_text("txt_status", result_msg)
+            unreal.log(f"SceneTools: {result_msg}")
+
+            refreshed_plan, refreshed_summary = self._build_ground_snap_plan(selected_actors)
+            self._last_ground_snap_plan = refreshed_plan
+            self.data.set_text("txt_ground_snap_preview", self._format_ground_snap_preview(refreshed_plan, refreshed_summary))
+        except Exception as e:
+            error_msg = f"落地执行失败：{str(e)}"
+            unreal.log_error(f"SceneTools execute_ground_snap: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
     def on_panel_expansion_changed(self, _is_expanded):
         self._resize_window_to_content()
 
@@ -458,6 +526,186 @@ class SceneToolsController:
         actor.set_actor_rotation(rotation, False)
         actor.set_actor_scale3d(scale)
         return True
+
+    def _build_ground_snap_plan(self, actors):
+        profile_name = str(self.data.get_text("input_ground_profile")).strip() or "BlockAll"
+        max_distance = self._get_float_from_ui("input_ground_max_distance", 5000.0, 1.0)
+        threshold = self._get_float_from_ui("input_ground_threshold", 1.0, 0.0)
+        ground_offset = self._get_float_from_ui("input_ground_offset", 0.0, -100000.0)
+        start_offset = self._get_float_from_ui("input_ground_start_offset", 50.0, 0.0)
+
+        plan = []
+        for actor in actors:
+            try:
+                trace_result = self._line_trace_actor_to_ground(actor, profile_name, max_distance, start_offset)
+                if not trace_result["hit"]:
+                    plan.append({
+                        "action": "miss",
+                        "actor": actor,
+                        "name": actor.get_name(),
+                        "reason": "未命中地面",
+                    })
+                    continue
+
+                bottom_z = trace_result["bottom_z"]
+                target_bottom_z = trace_result["hit_z"] + ground_offset
+                delta_z = target_bottom_z - bottom_z
+                action = "snap" if abs(delta_z) > threshold else "ok"
+                plan.append({
+                    "action": action,
+                    "actor": actor,
+                    "name": actor.get_name(),
+                    "bottom_z": bottom_z,
+                    "hit_z": trace_result["hit_z"],
+                    "delta_z": delta_z,
+                    "reason": "" if action == "snap" else "阈值内",
+                })
+            except Exception as e:
+                actor_name = self._safe_actor_name(actor)
+                plan.append({
+                    "action": "error",
+                    "actor": actor,
+                    "name": actor_name,
+                    "reason": str(e),
+                })
+
+        return plan, self._summarize_ground_snap_plan(plan)
+
+    def _line_trace_actor_to_ground(self, actor, profile_name, max_distance, start_offset):
+        world = unreal.EditorLevelLibrary.get_editor_world()
+        origin, extent = actor.get_actor_bounds(False, True)
+        start_z = origin.z + extent.z + start_offset
+        bottom_z = origin.z - extent.z
+        end_z = bottom_z - max_distance
+        start = unreal.Vector(origin.x, origin.y, start_z)
+        end = unreal.Vector(origin.x, origin.y, end_z)
+
+        hit = unreal.SystemLibrary.line_trace_single_by_profile(
+            world,
+            start,
+            end,
+            unreal.Name(profile_name),
+            False,
+            [actor],
+            unreal.DrawDebugTrace.NONE,
+            True,
+        )
+        if not hit:
+            return self._find_bounds_ground_below_actor(actor, origin, extent, bottom_z)
+
+        blocking_hit = self._safe_get_editor_property(hit, "blocking_hit")
+        if not blocking_hit:
+            return self._find_bounds_ground_below_actor(actor, origin, extent, bottom_z)
+
+        impact_point = self._safe_get_editor_property(hit, "impact_point")
+        if impact_point is None:
+            impact_point = self._safe_get_editor_property(hit, "location")
+        if impact_point is None:
+            return self._find_bounds_ground_below_actor(actor, origin, extent, bottom_z)
+
+        return {"hit": True, "bottom_z": bottom_z, "hit_z": impact_point.z}
+
+    def _find_bounds_ground_below_actor(self, actor, origin, extent, bottom_z):
+        best_top_z = None
+        try:
+            actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+            candidates = actor_subsystem.get_all_level_actors()
+        except Exception:
+            candidates = []
+
+        for candidate in candidates:
+            if candidate == actor:
+                continue
+
+            try:
+                candidate_origin, candidate_extent = candidate.get_actor_bounds(False, True)
+                if not self._bounds_overlap_xy(origin, extent, candidate_origin, candidate_extent):
+                    continue
+
+                candidate_top_z = candidate_origin.z + candidate_extent.z
+                if candidate_top_z > bottom_z + 1.0:
+                    continue
+
+                if best_top_z is None or candidate_top_z > best_top_z:
+                    best_top_z = candidate_top_z
+            except Exception:
+                continue
+
+        if best_top_z is None:
+            return {"hit": False, "bottom_z": bottom_z, "hit_z": 0.0}
+
+        return {"hit": True, "bottom_z": bottom_z, "hit_z": best_top_z}
+
+    def _bounds_overlap_xy(self, origin_a, extent_a, origin_b, extent_b):
+        overlap_x = abs(origin_a.x - origin_b.x) <= (extent_a.x + extent_b.x)
+        overlap_y = abs(origin_a.y - origin_b.y) <= (extent_a.y + extent_b.y)
+        return overlap_x and overlap_y
+
+    def _summarize_ground_snap_plan(self, plan):
+        summary = {
+            "total": len(plan),
+            "ready": 0,
+            "within_threshold": 0,
+            "missed": 0,
+            "failed": 0,
+        }
+        for item in plan:
+            if item["action"] == "snap":
+                summary["ready"] += 1
+            elif item["action"] == "ok":
+                summary["within_threshold"] += 1
+            elif item["action"] == "miss":
+                summary["missed"] += 1
+            elif item["action"] == "error":
+                summary["failed"] += 1
+        return summary
+
+    def _format_ground_snap_preview(self, plan, summary):
+        lines = []
+        lines.append("=== Actor Ground Snap Preview ===")
+        lines.append(
+            f"Snap: {summary['ready']} | OK: {summary['within_threshold']} | Miss: {summary['missed']} | Error: {summary['failed']} | Total: {summary['total']}"
+        )
+        lines.append("")
+
+        if not plan:
+            lines.append("No selected actors.")
+            return "\n".join(lines)
+
+        max_rows = 120
+        for index, item in enumerate(plan[:max_rows], 1):
+            if item["action"] == "snap":
+                lines.append(
+                    f"{index:03d}. [SNAP] {item['name']}  deltaZ={item['delta_z']:.2f}  groundZ={item['hit_z']:.2f}"
+                )
+            elif item["action"] == "ok":
+                lines.append(f"{index:03d}. [OK]   {item['name']}  deltaZ={item['delta_z']:.2f}")
+            elif item["action"] == "miss":
+                lines.append(f"{index:03d}. [MISS] {item['name']}  {item['reason']}")
+            else:
+                lines.append(f"{index:03d}. [ERR]  {item['name']}  {item['reason']}")
+
+        if len(plan) > max_rows:
+            lines.append("")
+            lines.append(f"... {len(plan) - max_rows} more rows omitted")
+
+        return "\n".join(lines)
+
+    def _get_float_from_ui(self, aka, default_value, min_value=None):
+        try:
+            raw_value = str(self.data.get_text(aka)).strip()
+            value = float(raw_value) if raw_value else float(default_value)
+        except Exception:
+            value = float(default_value)
+        if min_value is not None and value < min_value:
+            return float(min_value)
+        return value
+
+    def _safe_actor_name(self, actor):
+        try:
+            return actor.get_name()
+        except Exception:
+            return "<UnknownActor>"
 
     def _apply_layer_to_actor(self, actor, layer_name):
         # 优先尝试静态库 API
