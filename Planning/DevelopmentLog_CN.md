@@ -11,3 +11,80 @@
 - 验证：`SceneTools.json` 通过 UTF-8 JSON 解析；`SceneTools.py` 通过 Pylance 语法检查与 `python -m py_compile`。
 - 已知限制：当前版本是同步批处理；1000+ Actor 场景仍需引入分帧队列。执行操作尚未记录 Ctrl+Z 事务或回滚快照。
 - 下一步：继续 SceneTools Iteration 2 的 G-11 渲染属性批处理，或补强落地检测的分帧执行、回滚快照和更明确的碰撞通道配置。
+
+---
+
+## 2026-05-06 - BatchTagTool：P0/P1 优化 + 按Tag选Actor修复
+
+- 模块：`TAPython/Python/BatchTagTool/`
+- 提交：`004be08`（`BatchTagTool.py` +264/-64 · `BatchTagTool.json` +55/-1）
+- 触发：`/tapython-generator` Sub-agent 全面代码审查，输出 P0/P1/P2 问题清单。
+- **P0 安全性修复**：
+  - "完全覆盖"写入新增 `chk_confirm_override` 确认 SCheckBox + 橙色警告文字；未勾选则拦截写入。
+  - `on_closed()` 正确清理 `_tick_handle`，防止热重载后幽灵 tick 竞争。
+- **P1 鲁棒性修复**：
+  - `_on_tick` 捕获异常后单次告警（`_tick_error_reported`），状态栏提示用户手动重读。
+  - Tag 规范化：`_normalize_tag_name()` / `_normalize_tag_list()` 去空格、过滤 None、去重。
+  - `_write_target_tags()` 返回 `{changed, skipped, failed}` 统计，状态栏显示写入结果。
+- **按Tag选Actor 修复**：根因为 `on_select_by_tag()` 只读 `_ni_selected_tags` 缓存，`OnSelectionChanged` 未触发时缓存为空；修复为按钮点击时主动调 `get_list_view_items()` 读取 SListView 当前选中下标，再映射到 `_ni_items_cache`。
+- 验证：`python -m json.tool` + `python -m py_compile` + `get_errors` 均通过。
+- 未实施（P2，留后续）：Tag 批量写入异步化、SDetailsView 与 SListView 双向联动、撤销历史命名优化。
+
+---
+
+## 2026-04-22 - BatchTagTool：从"自建数组 UI"升级为"SDetailsView 原生代理"
+
+- 模块：`TAPython/Python/BatchTagTool/`（新建独立工具）
+- 经历两代设计演进：
+  - **第一代**（SceneTools 内嵌 Tag 面板 → 已拆出）：8 行 indexed/mixed 三态列表，自建索引行对齐 UE5 细节面板，Replace-All 覆写语义；在多选批量场景存在误操作风险。
+  - **第二代**（当前版）：虚拟 UObject 代理（`BatchTagProxy.py`，独立 `@uclass` 模块）+ `SDetailsView` 绑定，原生数组编辑器接管 UI，代码量减少约 80%。
+- **关键设计决策**：
+  - `@uclass` 类独立模块，主模块 `importlib.reload` 不触碰 UClass 注册。
+  - 增量合并 vs 完全覆盖双模式（增量安全追加 Tag，覆盖模式含 `ScopedEditorTransaction`）。
+  - 交集预览工作流：选中 Actor → 自动计算 Tag 交集写入代理 → SDetailsView 显示共有 Tag → 用户增删 → 点击应用。
+- **新增 Bug 记录（#8~#11）**：
+  - `#8`：`create_file` 对已存在文件 append 而非 overwrite，文件末尾旧类覆盖新类。
+  - `#9`：`@unreal.uclass()` reload 重复注册崩溃 → 代理类拆独立模块。
+  - `#10`：`new_object` 返回代理被 GC 回收 → 需 `self.tag_proxy` 强引用。
+  - `#11`：`set_object` 在 `__init__` 中调用无效（UI 未渲染完成）→ 延迟到 Slate tick 首帧。
+
+---
+
+## 2026-04-17 - SceneTools Tag 面板：对齐 UE5 原生 Actor 标签逻辑（完整重设计）
+
+- 模块：`TAPython/Python/SceneTools/`（SceneTools Iteration 1 后续）
+- 将 Tag 输入区从多行文本框完整重设计为动态索引列表，对齐 UE5 细节面板中 Actor 标签编辑行为。
+- **三态展示逻辑**：无选中→0行；单选/多选且 Tag 一致→indexed 模式；多选且 Tag 各不相同→mixed 橙色提示。
+- **Tag 写入语义改为 Replace-All**（完整覆盖目标 Actor 标签列表，对齐 UE5 原生行为）。
+- 实时自动读取：`unreal.register_slate_post_tick_callback` 节流（每 ~15 帧）检测选中状态变化，自动刷新。
+- **关键 Bug 修复（#4~#7，已同步 CommonPitfalls.md）**：
+  - `#4`：`STextBlock` 的 `set_visible` 不生效 → 改用 `set_text("")` 置空模拟隐藏。
+  - `#5`：`__init__` 中调用 `set_visible` 被静默忽略（UI 未渲染完）→ 改在 tick 首帧初始同步（`_initial_sync_done` 标志）。
+  - `#6`：`SHorizontalBox`/`SVerticalBox` 不支持 `set_visible` → 用 `SBox` 包裹每行，`Aka` 注册到 `SBox`。
+  - `#7`：`SExpandableArea` 的 `AreaTitle` 无效 → 改用 `HeaderContent`。
+
+---
+
+## 2026-04-09 - SceneTools：重构与场景可见性工作流交付
+
+- 模块：`TAPython/Python/SceneTools/`（由 SceneSelectTool 重构而来）
+- 将原 Scene Selection Tool 统一重命名为 SceneTools（Python、JSON、MenuConfig 全同步）。
+- **新增功能**：针对已选 Actor 的编辑器可见性操作（隐藏已选 / 显示已选）。
+- **兼容性处理**：Actor 编辑器可见性采用多级回退逻辑；Checkbox API 命名差异（`set_is_checked` vs `set_check_boxe_is_checked`）封装到 helper 方法；JSON 布尔回调参数问题改为无参独立回调。
+- **UI 重构**：SceneTools 改为可折叠分组面板（选择工具 / 隐藏工具）+ 窗口高度自适应。
+- 关键提交：`ad460c0`
+
+---
+
+## 2026-04-08 - 工作区初始化与首个可用工具交付
+
+- 模块：`TAPython/Python/SceneTools/`（前身 SceneSelectTool）；README / MenuConfig
+- 建立 Claude_UE5Tools 工作区，完成 TAPython 工具框架理解与菜单集成。
+- **首个可用工具**：Scene Selection Tool（批量选择 Actor）
+  - 当前关卡 / 所有关卡范围选择
+  - 常见 Actor 类别：StaticMesh、蓝图 Actor、多种灯光类型、贴花、摄像机、触发器
+  - 清空当前选择
+- **关键技术决策**：SceneSelectTool 采用分层关卡解析策略（多级回退，减少 UE 版本 API 差异）；菜单名英文 + tooltip 中文描述。
+- **文档建设**：新增 README.md / README_CN.md，补充 Python Additional Paths 配置、Chameleon Sketch 验证方法、UE 项目英文路径限制。
+- **仓库配置**：TAPython-skill 从 git 子模块改为主仓库直接跟踪目录，避免外部权限依赖。
+- 主仓库远端：`https://github.com/BOOHHP/Claude_UE5Tools.git`
