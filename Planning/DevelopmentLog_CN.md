@@ -1,5 +1,27 @@
 # TA 工具开发日志
 
+## 2026-05-07 - SceneTools Iteration 2.1：先沉淀场景批处理底座
+
+- 模块：`TAPython/Python/SceneTools/`
+- 范围：记录下一阶段开发判断，并作为后续开发入口。
+- 判断：优先把 SceneTools Iteration 2 打成稳定的场景批处理底座，再继续扩展 G-11、G-15、05、11 等场景类工具。
+- 原因：当前 SceneTools 与 BatchTagTool 已反复出现同类共性需求：预览/执行、事务撤销、变更快照、统计报告、失败清单、分批处理与状态反馈；若继续横向新增单点工具，会重复实现这些能力。
+- 开发顺序：先补强 `03_Actor落地检测` 的事务、快照、报告与分帧执行，再开发 G-11 批量修改物体渲染属性，随后推进 G-15 对齐/阵列/分布。
+- 本轮实现入口：先在不改变 UI 的前提下增强 `execute_ground_snap()`，补充 `ScopedEditorTransaction`、执行快照与 changed/skipped/failed 报告，为后续统一批处理框架铺路。
+- 修复验证：落地修正执行后已能通过 Ctrl+Z 回到原位置；关键修复为事务内对 Actor 与 RootComponent 调用 `modify()`，且事务创建失败时取消执行，避免无事务改位置。
+- 下一步：进入 G-11 批量修改物体渲染属性 v1，先做关卡实例级 Actor/Component 渲染属性，不触碰蓝图源资产。
+- G-11 v1：已在 SceneTools 新增“渲染属性”面板，支持 Actor Hidden In Game、组件 Hidden In Game、组件可见性、Cast Shadow、Max Draw Distance 的预览/执行。
+- G-11 执行策略：执行前生成差异计划；执行时使用 `ScopedEditorTransaction`，并在写入前对目标 Actor/Component 调用 `modify()`；事务创建失败时取消执行，避免不可撤销修改。
+- 验证结果：G-11 渲染属性批处理已在 UE 中验证功能正常；补齐 `_safe_object_name()` 后，预览/执行不再因组件命名中断。
+- 下一步：进入 G-15 批量对齐/阵列/分布 v1。
+- G-15 v1：已在 SceneTools 新增“对齐 / 分布”面板，支持按 X/Y/Z 轴对齐到首个 Actor、等距分布、按步长阵列。
+- G-15 执行策略：执行前生成目标位置计划；执行时使用 `ScopedEditorTransaction`，并在移动前对 Actor 与 RootComponent 调用 `modify()`，保持 Ctrl+Z 撤销链路。
+- G-15 交互修正：轴向选择由文本输入改为 X/Y/Z 多选勾选框；对齐、等距分布和步长阵列均可一次作用于多个轴，且至少保留一个轴向选中。
+- 验证结果：G-15 对齐/分布/阵列已在 UE 中验证功能正常，多轴勾选交互可用。
+- 分帧执行 v1：SceneTools 新增通用 Slate post tick 分帧任务入口；`03_Actor落地检测` 在待修正 Actor 数超过 50 时自动分帧执行，每帧处理 50 个，并在工具关闭/热重载时注销 tick 回调。
+
+---
+
 ## 2026-05-06 - SceneTools：Actor 落地检测 v1
 
 - 模块：`TAPython/Python/SceneTools/`
