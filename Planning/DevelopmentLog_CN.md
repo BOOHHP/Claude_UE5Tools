@@ -18,7 +18,15 @@
 - G-15 执行策略：执行前生成目标位置计划；执行时使用 `ScopedEditorTransaction`，并在移动前对 Actor 与 RootComponent 调用 `modify()`，保持 Ctrl+Z 撤销链路。
 - G-15 交互修正：轴向选择由文本输入改为 X/Y/Z 多选勾选框；对齐、等距分布和步长阵列均可一次作用于多个轴，且至少保留一个轴向选中。
 - 验证结果：G-15 对齐/分布/阵列已在 UE 中验证功能正常，多轴勾选交互可用。
-- 分帧执行 v1：SceneTools 新增通用 Slate post tick 分帧任务入口；`03_Actor落地检测` 在待修正 Actor 数超过 50 时自动分帧执行，每帧处理 50 个，并在工具关闭/热重载时注销 tick 回调。
+- 分帧执行 v1：SceneTools 新增通用分帧任务入口；`03_Actor落地检测` 在待修正 Actor 数超过 50 时自动分帧执行，每批处理 50 个，并在工具关闭/热重载时注销后台回调。
+- 分帧执行 v1.1：分帧入口已复用于 G-11/G-15；G-11 按待写入渲染属性变更项分批执行，G-15 按待移动 Actor 分批执行，同步路径仍作为小批量默认路径与后台驱动注册失败回退。
+- 分帧执行修复：测试发现仅依赖 Slate post tick 时，后台任务不会稳定自动推进，表现为需要再次点击按钮才处理下一批；已改为优先使用 `unreal.PythonBPLib.set_timer()` 定时推进，Slate tick 仅作为兼容回退。
+- 验证结果：分帧执行 timer 驱动方案已在 UE 中验证功能逻辑正确，点击一次后可自动推进后续批次，不再需要手动再次点击。
+- 变换工具撤销修复：位置归零、旋转归零、缩放归一、全变换重置已接入 `ScopedEditorTransaction`，并在写入前对 Actor 与 RootComponent 调用 `modify(True)`；Transform 写入改为构造完整 `unreal.Transform` 后单次 `set_actor_transform()`，避免分散写入导致 Ctrl+Z 状态不一致。
+- 热重载兼容修复：`InitPyCmd` / `OnClosePyCmd` 已改为 `getattr(SceneTools, 'on_close', lambda: None)()` 安全调用，避免旧版内存模块缺少 `on_close` 时抛出 AttributeError 并阻断 `importlib.reload()`。
+- UI FontInfo 修复：SceneTools.json 中 18 处 `Font: ["Segoe UI", ...]` 数组格式已改为 Chameleon 可解析的 `FontObject + Size` 对象格式，避免打开工具时反复输出 `ParseFontInfo JsonValue Type Error, Need Object`。
+- 验证结果：SceneTools 打开/关闭报错与 FontInfo 解析报错均已在 UE 中确认消除。
+- 验证状态：`SceneTools.py` 已通过 Pylance 问题检查与 `python -m py_compile`；SceneTools Iteration 2.1 可进入收尾与下一阶段开发。
 
 ---
 

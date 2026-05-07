@@ -25,6 +25,7 @@ _ALL_TYPE_AKAS = [
 ]
 
 _FRAME_TASK_CHUNK_SIZE = 50
+_FRAME_TASK_INTERVAL_SECONDS = 0.03
 
 
 class SceneToolsController:
@@ -51,6 +52,7 @@ class SceneToolsController:
         self._last_align_distribution_report = {}
         self._align_axis_updating = False
         self._frame_tick_handle = None
+        self._frame_timer_handle = None
         self._frame_task = None
 
     # ------------------------------------------------------------------
@@ -272,21 +274,35 @@ class SceneToolsController:
             if not selected_actors:
                 return
 
-            updated = 0
-            for actor in selected_actors:
-                try:
-                    if self._apply_actor_transform_mode(actor, mode):
-                        updated += 1
-                except Exception as e:
-                    unreal.log_warning(f"SceneTools: 重置变换失败 {actor.get_name()} - {str(e)}")
-
             mode_label = {
                 "location": "位置归零",
                 "rotation": "旋转归零",
                 "scale": "缩放归一",
                 "all": "全变换重置",
             }.get(mode, mode)
-            msg = f"{mode_label}完成：{updated} / {len(selected_actors)}"
+            updated = 0
+            failed = 0
+            action_name = f"SceneTools Reset Transform ({mode}, {len(selected_actors)} Actors)"
+            try:
+                with unreal.ScopedEditorTransaction(action_name):
+                    for actor in selected_actors:
+                        actor_name = self._safe_actor_name(actor)
+                        try:
+                            if not self._mark_actor_transform_for_undo(actor, actor_name):
+                                failed += 1
+                                continue
+                            if self._apply_actor_transform_mode(actor, mode):
+                                updated += 1
+                        except Exception as e:
+                            failed += 1
+                            unreal.log_warning(f"SceneTools: 重置变换失败 {actor_name} - {str(e)}")
+            except Exception as e:
+                error_msg = f"{mode_label}失败：事务创建失败，已取消执行以避免不可撤销修改：{str(e)}"
+                unreal.log_error(f"SceneTools execute_reset_transform: {error_msg}")
+                self.data.set_text("txt_status", error_msg)
+                return
+
+            msg = f"{mode_label}完成（事务版）：修改 {updated}，失败 {failed}，共 {len(selected_actors)}。"
             self.data.set_text("txt_status", msg)
             unreal.log(f"SceneTools: {msg}")
         except Exception as e:
@@ -488,6 +504,9 @@ class SceneToolsController:
 
             plan, summary = self._build_render_property_plan(selected_actors, settings)
             self._last_render_property_plan = plan
+            if self._start_render_property_frame_task(selected_actors, settings, plan, summary):
+                return
+
             report = self._execute_render_property_plan(plan, summary)
             self._last_render_property_report = report
 
@@ -580,6 +599,9 @@ class SceneToolsController:
 
             plan, summary = self._build_align_distribution_plan(selected_actors, mode)
             self._last_align_distribution_plan = plan
+            if self._start_align_distribution_frame_task(selected_actors, plan, summary, mode):
+                return
+
             report = self._execute_align_distribution_plan(plan, summary, mode)
             self._last_align_distribution_report = report
 
@@ -698,9 +720,8 @@ class SceneToolsController:
         if mode in ("scale", "all"):
             scale = unreal.Vector(1.0, 1.0, 1.0)
 
-        actor.set_actor_location(location, False, False)
-        actor.set_actor_rotation(rotation, False)
-        actor.set_actor_scale3d(scale)
+        new_transform = unreal.Transform(location, rotation, scale)
+        actor.set_actor_transform(new_transform, False, False)
         return True
 
     def _build_ground_snap_plan(self, actors):
@@ -945,8 +966,18 @@ class SceneToolsController:
         return True
 
     def _register_frame_tick(self):
-        if self._frame_tick_handle is not None:
+        if self._frame_timer_handle is not None or self._frame_tick_handle is not None:
             return True
+        try:
+            self._frame_timer_handle = unreal.PythonBPLib.set_timer(
+                self._on_frame_timer,
+                _FRAME_TASK_INTERVAL_SECONDS,
+                True,
+            )
+            return True
+        except Exception as e:
+            unreal.log_warning(f"SceneTools: Timer 注册失败，尝试 Slate tick 分帧 - {str(e)}")
+
         try:
             self._frame_tick_handle = unreal.register_slate_post_tick_callback(self._on_frame_tick)
             return True
@@ -955,22 +986,39 @@ class SceneToolsController:
             return False
 
     def _unregister_frame_tick(self):
-        if self._frame_tick_handle is None:
-            return
+        if self._frame_timer_handle is not None:
+            try:
+                unreal.PythonBPLib.clear_timer(self._frame_timer_handle)
+            except Exception as e:
+                unreal.log_warning(f"SceneTools: Timer 注销失败 - {str(e)}")
+            finally:
+                self._frame_timer_handle = None
+
         try:
-            unreal.unregister_slate_post_tick_callback(self._frame_tick_handle)
+            if self._frame_tick_handle is not None:
+                unreal.unregister_slate_post_tick_callback(self._frame_tick_handle)
         except Exception as e:
             unreal.log_warning(f"SceneTools: Slate tick 注销失败 - {str(e)}")
         finally:
             self._frame_tick_handle = None
 
+    def _on_frame_timer(self):
+        self._process_frame_task()
+
     def _on_frame_tick(self, _delta_time):
+        self._process_frame_task()
+
+    def _process_frame_task(self):
         try:
             if self._frame_task is None:
                 self._unregister_frame_tick()
                 return
             if self._frame_task.get("kind") == "ground_snap":
                 self._process_ground_snap_frame_task(self._frame_task)
+            elif self._frame_task.get("kind") == "render_property":
+                self._process_render_property_frame_task(self._frame_task)
+            elif self._frame_task.get("kind") == "align_distribution":
+                self._process_align_distribution_frame_task(self._frame_task)
         except Exception as e:
             unreal.log_error(f"SceneTools frame task: {str(e)}")
             self.data.set_text("txt_status", f"分帧任务失败：{str(e)}")
@@ -1045,7 +1093,7 @@ class SceneToolsController:
 
     def _mark_actor_transform_for_undo(self, actor, actor_name):
         try:
-            if actor.modify() is False:
+            if actor.modify(True) is False:
                 unreal.log_warning(f"SceneTools: Actor {actor_name} modify 返回 False")
                 return False
         except Exception as e:
@@ -1060,7 +1108,7 @@ class SceneToolsController:
 
         if root_component is not None:
             try:
-                root_component.modify()
+                root_component.modify(True)
             except Exception as e:
                 unreal.log_warning(f"SceneTools: Actor {actor_name} root component modify 失败 - {str(e)}")
 
@@ -1260,6 +1308,17 @@ class SceneToolsController:
         return summary
 
     def _execute_render_property_plan(self, plan, summary):
+        changes, report = self._collect_render_property_changes(plan, summary)
+
+        if not changes:
+            return report
+
+        action_name = f"SceneTools Render Properties ({len(changes)} Changes)"
+        self._apply_render_property_transaction(changes, report, action_name)
+        report["skipped"] = max(0, report["total"] - report["changed"] - report["failed"])
+        return report
+
+    def _collect_render_property_changes(self, plan, summary):
         changes = []
         report = {
             "total": summary["changes"],
@@ -1273,16 +1332,16 @@ class SceneToolsController:
             changes.extend(item["changes"])
             for error in item["errors"]:
                 report["failures"].append({"name": item["name"], "reason": error})
+        return changes, report
 
-        if not changes:
-            return report
-
-        action_name = f"SceneTools Render Properties ({len(changes)} Changes)"
+    def _apply_render_property_transaction(self, changes, report, action_name):
+        changed_before = report["changed"]
+        snapshot_count_before = len(report["snapshots"])
         try:
             with unreal.ScopedEditorTransaction(action_name):
                 self._apply_render_property_changes(changes, report)
         except Exception as e:
-            if report["changed"] == 0 and not report["snapshots"]:
+            if report["changed"] == changed_before and len(report["snapshots"]) == snapshot_count_before:
                 report["failed"] += len(changes)
                 report["failures"].append({
                     "name": "ScopedEditorTransaction",
@@ -1293,8 +1352,74 @@ class SceneToolsController:
                 report["failed"] += 1
                 report["failures"].append({"name": "ScopedEditorTransaction", "reason": str(e)})
                 unreal.log_warning(f"SceneTools: 渲染属性事务结束异常，已保留当前执行结果 - {str(e)}")
+
+    def _start_render_property_frame_task(self, selected_actors, settings, plan, summary):
+        changes, report = self._collect_render_property_changes(plan, summary)
+        if len(changes) <= _FRAME_TASK_CHUNK_SIZE:
+            return False
+        if self._frame_task is not None:
+            msg = "已有分帧任务正在执行，请等待当前任务完成后再执行。"
+            self.data.set_text("txt_status", msg)
+            unreal.log_warning(f"SceneTools: {msg}")
+            return True
+
+        self._frame_task = {
+            "kind": "render_property",
+            "actors": list(selected_actors),
+            "settings": settings,
+            "plan": plan,
+            "summary": summary,
+            "changes": changes,
+            "index": 0,
+            "report": report,
+        }
+        if not self._register_frame_tick():
+            self._frame_task = None
+            return False
+
+        msg = f"渲染属性分帧执行开始：每帧处理 {_FRAME_TASK_CHUNK_SIZE} 项，待修改 {len(changes)} 项。"
+        self.data.set_text("txt_status", msg)
+        self.data.set_text("txt_render_property_preview", self._format_render_property_preview(plan, summary) + "\n\n" + msg)
+        unreal.log(f"SceneTools: {msg}")
+        return True
+
+    def _process_render_property_frame_task(self, task):
+        changes = task["changes"]
+        start_index = task["index"]
+        end_index = min(start_index + _FRAME_TASK_CHUNK_SIZE, len(changes))
+        chunk = changes[start_index:end_index]
+        action_name = f"SceneTools Render Properties Frame ({start_index + 1}-{end_index}/{len(changes)})"
+        self._apply_render_property_transaction(chunk, task["report"], action_name)
+        task["index"] = end_index
+
+        if end_index >= len(changes):
+            self._finish_render_property_frame_task(task)
+            return
+
+        msg = f"渲染属性分帧执行中：{end_index}/{len(changes)} 已处理。"
+        self.data.set_text("txt_status", msg)
+
+    def _finish_render_property_frame_task(self, task):
+        report = task["report"]
         report["skipped"] = max(0, report["total"] - report["changed"] - report["failed"])
-        return report
+        selected_actors = task["actors"]
+        settings = task["settings"]
+        self._last_render_property_report = report
+
+        msg = (
+            f"渲染属性分帧执行完成：修改 {report['changed']}，跳过 {report['skipped']}，"
+            f"失败 {report['failed']}，共 {report['total']} 项。"
+        )
+        self.data.set_text("txt_status", msg)
+        unreal.log(f"SceneTools: {msg}")
+
+        refreshed_plan, refreshed_summary = self._build_render_property_plan(selected_actors, settings)
+        self._last_render_property_plan = refreshed_plan
+        preview_text = self._format_render_property_preview(refreshed_plan, refreshed_summary)
+        self.data.set_text("txt_render_property_preview", preview_text + "\n\n" + self._format_render_property_report(report))
+
+        self._frame_task = None
+        self._unregister_frame_tick()
 
     def _apply_render_property_changes(self, changes, report):
         for change in changes:
@@ -1514,6 +1639,16 @@ class SceneToolsController:
 
     def _execute_align_distribution_plan(self, plan, summary, mode):
         move_items = [item for item in plan if item["action"] == "move"]
+        report = self._create_align_distribution_report(plan, summary)
+
+        if not move_items:
+            return report
+
+        action_name = f"SceneTools Align Distribute ({mode}, {len(move_items)} Actors)"
+        self._apply_align_distribution_transaction(move_items, report, action_name)
+        return report
+
+    def _create_align_distribution_report(self, plan, summary):
         report = {
             "total": summary["changes"],
             "changed": 0,
@@ -1525,16 +1660,16 @@ class SceneToolsController:
         for item in plan:
             if item["action"] == "error":
                 report["failures"].append({"name": item["name"], "reason": item.get("reason", "")})
+        return report
 
-        if not move_items:
-            return report
-
-        action_name = f"SceneTools Align Distribute ({mode}, {len(move_items)} Actors)"
+    def _apply_align_distribution_transaction(self, move_items, report, action_name):
+        changed_before = report["changed"]
+        snapshot_count_before = len(report["snapshots"])
         try:
             with unreal.ScopedEditorTransaction(action_name):
                 self._apply_align_distribution_items(move_items, report)
         except Exception as e:
-            if report["changed"] == 0 and not report["snapshots"]:
+            if report["changed"] == changed_before and len(report["snapshots"]) == snapshot_count_before:
                 report["failed"] += len(move_items)
                 report["failures"].append({
                     "name": "ScopedEditorTransaction",
@@ -1545,7 +1680,73 @@ class SceneToolsController:
                 report["failed"] += 1
                 report["failures"].append({"name": "ScopedEditorTransaction", "reason": str(e)})
                 unreal.log_warning(f"SceneTools: 对齐/分布事务结束异常，已保留当前执行结果 - {str(e)}")
-        return report
+
+    def _start_align_distribution_frame_task(self, selected_actors, plan, summary, mode):
+        move_items = [item for item in plan if item["action"] == "move"]
+        if len(move_items) <= _FRAME_TASK_CHUNK_SIZE:
+            return False
+        if self._frame_task is not None:
+            msg = "已有分帧任务正在执行，请等待当前任务完成后再执行。"
+            self.data.set_text("txt_status", msg)
+            unreal.log_warning(f"SceneTools: {msg}")
+            return True
+
+        self._frame_task = {
+            "kind": "align_distribution",
+            "actors": list(selected_actors),
+            "mode": mode,
+            "plan": plan,
+            "summary": summary,
+            "move_items": move_items,
+            "index": 0,
+            "report": self._create_align_distribution_report(plan, summary),
+        }
+        if not self._register_frame_tick():
+            self._frame_task = None
+            return False
+
+        msg = f"对齐/分布分帧执行开始：每帧处理 {_FRAME_TASK_CHUNK_SIZE} 个，待移动 {len(move_items)} 个。"
+        self.data.set_text("txt_status", msg)
+        self.data.set_text("txt_align_preview", self._format_align_distribution_preview(plan, summary, mode) + "\n\n" + msg)
+        unreal.log(f"SceneTools: {msg}")
+        return True
+
+    def _process_align_distribution_frame_task(self, task):
+        move_items = task["move_items"]
+        start_index = task["index"]
+        end_index = min(start_index + _FRAME_TASK_CHUNK_SIZE, len(move_items))
+        chunk = move_items[start_index:end_index]
+        action_name = f"SceneTools Align Distribute Frame ({start_index + 1}-{end_index}/{len(move_items)})"
+        self._apply_align_distribution_transaction(chunk, task["report"], action_name)
+        task["index"] = end_index
+
+        if end_index >= len(move_items):
+            self._finish_align_distribution_frame_task(task)
+            return
+
+        msg = f"对齐/分布分帧执行中：{end_index}/{len(move_items)} 已处理。"
+        self.data.set_text("txt_status", msg)
+
+    def _finish_align_distribution_frame_task(self, task):
+        report = task["report"]
+        selected_actors = task["actors"]
+        mode = task["mode"]
+        self._last_align_distribution_report = report
+
+        msg = (
+            f"对齐/分布分帧执行完成：移动 {report['changed']}，跳过 {report['skipped']}，"
+            f"失败 {report['failed']}，共 {report['total']}。"
+        )
+        self.data.set_text("txt_status", msg)
+        unreal.log(f"SceneTools: {msg}")
+
+        refreshed_plan, refreshed_summary = self._build_align_distribution_plan(selected_actors, mode)
+        self._last_align_distribution_plan = refreshed_plan
+        preview_text = self._format_align_distribution_preview(refreshed_plan, refreshed_summary, mode)
+        self.data.set_text("txt_align_preview", preview_text + "\n\n" + self._format_align_distribution_report(report))
+
+        self._frame_task = None
+        self._unregister_frame_tick()
 
     def _apply_align_distribution_items(self, move_items, report):
         for item in move_items:

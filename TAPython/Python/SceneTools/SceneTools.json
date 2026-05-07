@@ -1,8 +1,8 @@
 {
     "TabLabel": "场景工具集",
     "InitTabSize": [420, 360],
-    "InitPyCmd": "import importlib; from SceneTools import SceneTools; SceneTools.on_close(); importlib.reload(SceneTools); SceneTools.instance = SceneTools.SceneToolsController(%JsonPath)",
-    "OnClosePyCmd": "SceneTools.on_close()",
+    "InitPyCmd": "import importlib; from SceneTools import SceneTools; getattr(SceneTools, 'on_close', lambda: None)(); importlib.reload(SceneTools); SceneTools.instance = SceneTools.SceneToolsController(%JsonPath)",
+    "OnClosePyCmd": "from SceneTools import SceneTools; getattr(SceneTools, 'on_close', lambda: None)()",
 
     "Root": {
         "SScrollBox": {
@@ -23,7 +23,7 @@
                                     "HeaderContent": {
                                         "STextBlock": {
                                             "Text": "选择工具",
-                                            "Font": ["Segoe UI", "10", "Bold"]
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
                                     },
                                     "BodyContent": {
@@ -34,7 +34,7 @@
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
                                                         "Text": "按范围和物件类型批量选择场景中的 Actor。选择后可进行可见性控制。",
-                                                        "Font": ["Segoe UI", "9"],
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
                                                     }
@@ -49,7 +49,7 @@
                                                                 "Padding": [0, 0, 0, 6],
                                                                 "STextBlock": {
                                                                     "Text": "选择范围",
-                                                                    "Font": ["Segoe UI", "10", "Bold"],
+                                                                    "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 },
                                                                     "ColorAndOpacity": [0.8, 0.8, 0.8, 1.0]
                                                                 }
                                                             },
@@ -110,7 +110,7 @@
                                                                             "VAlign": "VAlign_Center",
                                                                             "STextBlock": {
                                                                                 "Text": "物件类型",
-                                                                                "Font": ["Segoe UI", "10", "Bold"],
+                                                                                "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 },
                                                                                 "ColorAndOpacity": [0.8, 0.8, 0.8, 1.0]
                                                                             }
                                                                         },
@@ -308,7 +308,7 @@
                                     "HeaderContent": {
                                         "STextBlock": {
                                             "Text": "对齐 / 分布",
-                                            "Font": ["Segoe UI", "10", "Bold"]
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
                                     },
                                     "BodyContent": {
@@ -319,7 +319,7 @@
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
                                                         "Text": "对已选 Actor 按 X/Y/Z 轴执行对齐、等距分布或按步长阵列。执行前可预览目标位置。",
-                                                        "Font": ["Segoe UI", "9"],
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
                                                     }
@@ -521,7 +521,7 @@
                                     "HeaderContent": {
                                         "STextBlock": {
                                             "Text": "渲染属性",
-                                            "Font": ["Segoe UI", "10", "Bold"]
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
                                     },
                                     "BodyContent": {
@@ -532,7 +532,7 @@
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
                                                         "Text": "批量修改已选 Actor 与组件的实例级渲染属性。先预览差异，再执行写入。",
-                                                        "Font": ["Segoe UI", "9"],
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
                                                     }
@@ -728,7 +728,7 @@
                                     "HeaderContent": {
                                         "STextBlock": {
                                             "Text": "落地检测",
-                                            "Font": ["Segoe UI", "10", "Bold"]
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
                                     },
                                     "BodyContent": {
@@ -739,7 +739,7 @@
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
                                                         "Text": "检测已选 Actor 底部到地面的偏移，可先预览再执行修正。",
-                                                        "Font": ["Segoe UI", "9"],
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
                                                     }
@@ -924,7 +924,7 @@
                                     "HeaderContent": {
                                         "STextBlock": {
                                             "Text": "隐藏工具",
-                                            "Font": ["Segoe UI", "10", "Bold"]
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
                                     },
                                     "BodyContent": {
@@ -935,7 +935,7 @@
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
                                                         "Text": "对已选择的 Actor 进行可见性控制：隐藏视图中的物件或重新显示被隐藏的物件。",
-                                                        "Font": ["Segoe UI", "9"],
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
                                                     }
@@ -985,7 +985,7 @@
                                     "HeaderContent": {
                                         "STextBlock": {
                                             "Text": "变换工具",
-                                            "Font": ["Segoe UI", "10", "Bold"]
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
                                     },
                                     "BodyContent": {
@@ -996,7 +996,7 @@
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
                                                         "Text": "对已选择的 Actor 执行位置归零、旋转归零、缩放归一或全重置。",
-                                                        "Font": ["Segoe UI", "9"],
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
                                                     }
@@ -1070,7 +1070,7 @@
                                     "HeaderContent": {
                                         "STextBlock": {
                                             "Text": "图层 / 分组",
-                                            "Font": ["Segoe UI", "10", "Bold"]
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
                                     },
                                     "BodyContent": {
@@ -1081,7 +1081,7 @@
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
                                                         "Text": "对已选 Actor 应用图层（世界分区）与分组（Outliner 文件夹）。Tag 批量修改请使用 Batch Tag Tool。",
-                                                        "Font": ["Segoe UI", "9"],
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
                                                     }
@@ -1162,7 +1162,7 @@
                                     "HeaderContent": {
                                         "STextBlock": {
                                             "Text": "Tag 导出",
-                                            "Font": ["Segoe UI", "10", "Bold"]
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
                                     },
                                     "BodyContent": {
@@ -1173,7 +1173,7 @@
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
                                                         "Text": "导出选中 Actor 名称与 Tag。留空路径时默认导出到桌面。",
-                                                        "Font": ["Segoe UI", "9"],
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
                                                     }

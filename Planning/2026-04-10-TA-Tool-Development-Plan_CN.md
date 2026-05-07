@@ -452,8 +452,15 @@
 - 验证补充：G-11 已在 UE 中验证功能正常；预览/执行路径已修复组件安全命名问题。
 - 已完成 v1：G-15 批量对齐/阵列/分布已并入 SceneTools，支持按轴对齐到首个 Actor、等距分布、按步长阵列，执行路径支持事务撤销和失败报告。
 - 验证补充：G-15 已在 UE 中验证功能正常；轴向选择已调整为 X/Y/Z 多选勾选方式。
-- 已完成 v1：`03_Actor落地检测` 已接入分帧执行入口，大批量落地修正超过 50 个待处理 Actor 时按 Slate post tick 分批执行，并在工具关闭/热重载时清理 tick 回调。
-- 下一步：将分帧执行底座复用于 G-11/G-15；或进入 Iteration 3 的 05_批量开关接受贴花、11_贴花转平面模型、G-14 场景无效 Actor 清理。
+- 已完成 v1：`03_Actor落地检测` 已接入分帧执行入口，大批量落地修正超过 50 个待处理 Actor 时分批执行，并在工具关闭/热重载时清理后台回调。
+- 已完成 v1.1：分帧执行底座已复用于 G-11/G-15；G-11 按待写入属性变更项分批，G-15 按待移动 Actor 分批，小批量仍走同步事务路径。
+- 修复补充：分帧驱动已由纯 Slate post tick 改为优先使用 `unreal.PythonBPLib.set_timer()` 自动推进，Slate tick 仅作为 timer 不可用时的兼容回退，避免必须手动再次点击才处理下一批。
+- 验证补充：分帧自动推进已在 UE 中确认功能逻辑正确，点击一次后可自动执行后续批次，不再需要手动再次点击。
+- 修复补充：SceneTools 变换工具已补齐事务撤销链路，位置归零、旋转归零、缩放归一、全变换重置均在写入前执行 `modify(True)`，并通过单次 `set_actor_transform()` 提交完整 Transform，支持 Ctrl+Z 撤回。
+- 修复补充：SceneTools 热重载清理改为兼容旧模块的 `getattr(..., 'on_close', lambda: None)()` 安全调用，避免旧内存模块没有 `on_close` 时打开/关闭工具报错。
+- 修复补充：SceneTools UI 字体配置已统一为 Chameleon 可解析的 FontInfo 对象格式，避免打开工具时输出 `ParseFontInfo JsonValue Type Error, Need Object`。
+- 验证补充：SceneTools 打开/关闭报错与 FontInfo 解析报错均已在 UE 中确认消除。
+- 下一步：进入 Iteration 3 的 05_批量开关接受贴花、11_贴花转平面模型、G-14 场景无效 Actor 清理。
 
 - 并入工具
 	- 03_Actor落地检测（v1 已完成，待增强）
