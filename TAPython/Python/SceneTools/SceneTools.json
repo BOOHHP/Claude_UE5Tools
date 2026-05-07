@@ -307,6 +307,253 @@
                                     "HeaderPadding": 3,
                                     "HeaderContent": {
                                         "STextBlock": {
+                                            "Text": "贴花转平面",
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
+                                        }
+                                    },
+                                    "BodyContent": {
+                                        "SVerticalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 4, 8, 8],
+                                                    "STextBlock": {
+                                                        "Text": "将已选 DecalActor 批量生成 Plane StaticMeshActor，按 Decal Size 估算平面缩放并复制贴花材质。",
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                                        "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                        "AutoWrapText": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 0, 8, 8],
+                                                    "SVerticalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SVerticalBox": {
+                                                                                "Slots": [
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "STextBlock": { "Text": "命名后缀" }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "SEditableTextBox": {
+                                                                                            "Aka": "input_decal_plane_suffix",
+                                                                                            "Text": "_Plane"
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SVerticalBox": {
+                                                                                "Slots": [
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "SCheckBox": {
+                                                                                            "Aka": "chk_decal_plane_copy_material",
+                                                                                            "IsChecked": true,
+                                                                                            "Content": { "STextBlock": { "Text": "  赋予材质" } }
+                                                                                        }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoHeight": true,
+                                                                                        "SCheckBox": {
+                                                                                            "Aka": "chk_decal_plane_hide_source",
+                                                                                            "IsChecked": false,
+                                                                                            "Content": { "STextBlock": { "Text": "  生成后隐藏源贴花" } }
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SButton": {
+                                                                                "Aka": "btn_decal_plane_preview",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "预览贴花转平面",
+                                                                                "OnClick": "SceneTools.instance.preview_decal_to_plane_batch()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SButton": {
+                                                                                "Aka": "btn_decal_plane_execute",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "执行贴花转平面",
+                                                                                "OnClick": "SceneTools.instance.execute_decal_to_plane_batch()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "SBorder": {
+                                                                    "Padding": 8,
+                                                                    "BorderImage": {
+                                                                        "Style": "FCoreStyle",
+                                                                        "Brush": "ToolPanel.GroupBorder"
+                                                                    },
+                                                                    "Content": {
+                                                                        "SMultiLineEditableTextBox": {
+                                                                            "Aka": "txt_decal_to_plane_preview",
+                                                                            "Text": "贴花转平面预览结果将显示在此处。",
+                                                                            "IsReadOnly": true,
+                                                                            "AutoWrapText": false
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "SExpandableArea": {
+                                    "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
+                                    "HeaderPadding": 3,
+                                    "HeaderContent": {
+                                        "STextBlock": {
+                                            "Text": "接受贴花",
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
+                                        }
+                                    },
+                                    "BodyContent": {
+                                        "SVerticalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 4, 8, 8],
+                                                    "STextBlock": {
+                                                        "Text": "批量开启或关闭已选 Actor 组件的 Receives Decals。先预览影响范围，再执行实例级写入。",
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                                        "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                        "AutoWrapText": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 0, 8, 8],
+                                                    "SVerticalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "STextBlock": {
+                                                                                "Text": "目标状态",
+                                                                                "ColorAndOpacity": [0.8, 0.8, 0.8, 1.0]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "SCheckBox": {
+                                                                                "Aka": "chk_receives_decals_value",
+                                                                                "IsChecked": true,
+                                                                                "Content": { "STextBlock": { "Text": "  接受贴花" } }
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SButton": {
+                                                                                "Aka": "btn_receives_decals_preview",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "预览接受贴花",
+                                                                                "OnClick": "SceneTools.instance.preview_receives_decals_batch()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SButton": {
+                                                                                "Aka": "btn_receives_decals_execute",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "执行接受贴花",
+                                                                                "OnClick": "SceneTools.instance.execute_receives_decals_batch()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "SBorder": {
+                                                                    "Padding": 8,
+                                                                    "BorderImage": {
+                                                                        "Style": "FCoreStyle",
+                                                                        "Brush": "ToolPanel.GroupBorder"
+                                                                    },
+                                                                    "Content": {
+                                                                        "SMultiLineEditableTextBox": {
+                                                                            "Aka": "txt_receives_decals_preview",
+                                                                            "Text": "接受贴花预览结果将显示在此处。",
+                                                                            "IsReadOnly": true,
+                                                                            "AutoWrapText": false
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "SExpandableArea": {
+                                    "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
+                                    "HeaderPadding": 3,
+                                    "HeaderContent": {
+                                        "STextBlock": {
                                             "Text": "对齐 / 分布",
                                             "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }

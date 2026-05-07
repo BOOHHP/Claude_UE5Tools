@@ -26,6 +26,7 @@ _ALL_TYPE_AKAS = [
 
 _FRAME_TASK_CHUNK_SIZE = 50
 _FRAME_TASK_INTERVAL_SECONDS = 0.03
+_DECAL_TO_PLANE_SIZE_MULTIPLIER = 2.0
 
 
 class SceneToolsController:
@@ -48,6 +49,10 @@ class SceneToolsController:
         self._last_ground_snap_execution_report = {}
         self._last_render_property_plan = []
         self._last_render_property_report = {}
+        self._last_receives_decals_plan = []
+        self._last_receives_decals_report = {}
+        self._last_decal_to_plane_plan = []
+        self._last_decal_to_plane_report = {}
         self._last_align_distribution_plan = []
         self._last_align_distribution_report = {}
         self._align_axis_updating = False
@@ -524,6 +529,119 @@ class SceneToolsController:
         except Exception as e:
             error_msg = f"渲染属性执行失败：{str(e)}"
             unreal.log_error(f"SceneTools execute_render_property_batch: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    # ------------------------------------------------------------------
+    # Iteration 3：05 批量开关接受贴花（关卡实例 v1）
+    # ------------------------------------------------------------------
+
+    def preview_receives_decals_batch(self):
+        try:
+            selected_actors = self._get_selected_actors_or_warn()
+            if not selected_actors:
+                return
+
+            settings = self._read_receives_decals_settings()
+            plan, summary = self._build_receives_decals_plan(selected_actors, settings)
+            self._last_receives_decals_plan = plan
+            self.data.set_text("txt_receives_decals_preview", self._format_receives_decals_preview(plan, summary))
+
+            msg = (
+                f"接受贴花预览完成：待修改 {summary['changes']} 项，"
+                f"无变化组件 {summary['unchanged_components']}，无组件 Actor {summary['no_component_actors']}，"
+                f"错误 {summary['errors']}，共 {summary['actors']} 个 Actor。"
+            )
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"接受贴花预览失败：{str(e)}"
+            unreal.log_error(f"SceneTools preview_receives_decals_batch: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def execute_receives_decals_batch(self):
+        try:
+            selected_actors = self._get_selected_actors_or_warn()
+            if not selected_actors:
+                return
+
+            settings = self._read_receives_decals_settings()
+            plan, summary = self._build_receives_decals_plan(selected_actors, settings)
+            self._last_receives_decals_plan = plan
+            if self._start_receives_decals_frame_task(selected_actors, settings, plan, summary):
+                return
+
+            report = self._execute_receives_decals_plan(plan, summary)
+            self._last_receives_decals_report = report
+
+            refreshed_plan, refreshed_summary = self._build_receives_decals_plan(selected_actors, settings)
+            self._last_receives_decals_plan = refreshed_plan
+            preview_text = self._format_receives_decals_preview(refreshed_plan, refreshed_summary)
+            self.data.set_text("txt_receives_decals_preview", preview_text + "\n\n" + self._format_receives_decals_report(report))
+
+            msg = (
+                f"接受贴花执行完成：修改 {report['changed']}，跳过 {report['skipped']}，"
+                f"失败 {report['failed']}，共 {report['total']} 项。"
+            )
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"接受贴花执行失败：{str(e)}"
+            unreal.log_error(f"SceneTools execute_receives_decals_batch: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    # ------------------------------------------------------------------
+    # Iteration 3：11 贴花转平面模型（v1）
+    # ------------------------------------------------------------------
+
+    def preview_decal_to_plane_batch(self):
+        try:
+            selected_actors = self._get_selected_actors_or_warn()
+            if not selected_actors:
+                return
+
+            settings = self._read_decal_to_plane_settings()
+            plan, summary = self._build_decal_to_plane_plan(selected_actors, settings)
+            self._last_decal_to_plane_plan = plan
+            self.data.set_text("txt_decal_to_plane_preview", self._format_decal_to_plane_preview(plan, summary))
+
+            msg = (
+                f"贴花转平面预览完成：可转换 {summary['ready']}，跳过 {summary['skipped']}，"
+                f"错误 {summary['errors']}，共 {summary['total']} 个 Actor。"
+            )
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"贴花转平面预览失败：{str(e)}"
+            unreal.log_error(f"SceneTools preview_decal_to_plane_batch: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def execute_decal_to_plane_batch(self):
+        try:
+            selected_actors = self._get_selected_actors_or_warn()
+            if not selected_actors:
+                return
+
+            settings = self._read_decal_to_plane_settings()
+            plan, summary = self._build_decal_to_plane_plan(selected_actors, settings)
+            self._last_decal_to_plane_plan = plan
+            if self._start_decal_to_plane_frame_task(selected_actors, settings, plan, summary):
+                return
+
+            report = self._execute_decal_to_plane_plan(plan, summary, settings)
+            self._last_decal_to_plane_report = report
+
+            preview_text = self._format_decal_to_plane_preview(plan, summary)
+            self.data.set_text("txt_decal_to_plane_preview", preview_text + "\n\n" + self._format_decal_to_plane_report(report))
+
+            msg = (
+                f"贴花转平面执行完成：生成 {report['created']}，跳过 {report['skipped']}，"
+                f"失败 {report['failed']}，共 {report['total']}。"
+            )
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"贴花转平面执行失败：{str(e)}"
+            unreal.log_error(f"SceneTools execute_decal_to_plane_batch: {error_msg}")
             self.data.set_text("txt_status", error_msg)
 
     # ------------------------------------------------------------------
@@ -1017,6 +1135,10 @@ class SceneToolsController:
                 self._process_ground_snap_frame_task(self._frame_task)
             elif self._frame_task.get("kind") == "render_property":
                 self._process_render_property_frame_task(self._frame_task)
+            elif self._frame_task.get("kind") == "receives_decals":
+                self._process_receives_decals_frame_task(self._frame_task)
+            elif self._frame_task.get("kind") == "decal_to_plane":
+                self._process_decal_to_plane_frame_task(self._frame_task)
             elif self._frame_task.get("kind") == "align_distribution":
                 self._process_align_distribution_frame_task(self._frame_task)
         except Exception as e:
@@ -1529,6 +1651,792 @@ class SceneToolsController:
 
         return "\n".join(lines)
 
+    def _read_receives_decals_settings(self):
+        return {
+            "target_value": self._get_checkbox_checked("chk_receives_decals_value"),
+            "label": "Receives Decals",
+        }
+
+    def _build_receives_decals_plan(self, actors, settings):
+        plan = []
+        for actor in actors:
+            item = {
+                "actor": actor,
+                "name": self._safe_actor_name(actor),
+                "changes": [],
+                "unchanged": 0,
+                "errors": [],
+                "component_count": 0,
+            }
+            try:
+                primitive_components = self._get_actor_components_by_class(actor, unreal.PrimitiveComponent)
+                item["component_count"] = len(primitive_components)
+                if not primitive_components:
+                    plan.append(item)
+                    continue
+
+                for component in primitive_components:
+                    self._add_receives_decals_change(item, component, settings["target_value"])
+            except Exception as e:
+                item["errors"].append(str(e))
+            plan.append(item)
+
+        return plan, self._summarize_receives_decals_plan(plan)
+
+    def _add_receives_decals_change(self, item, component, target_value):
+        component_name = self._safe_object_name(component)
+        old_value = self._get_component_receives_decals(component)
+        if old_value is None:
+            item["errors"].append(f"{component_name}: 无法读取 Receives Decals")
+            return
+        if bool(old_value) == bool(target_value):
+            item["unchanged"] += 1
+            return
+        item["changes"].append({
+            "kind": "receives_decals",
+            "target": component,
+            "target_name": component_name,
+            "owner_name": item["name"],
+            "label": "Receives Decals",
+            "old": bool(old_value),
+            "new": bool(target_value),
+        })
+
+    def _summarize_receives_decals_plan(self, plan):
+        summary = {
+            "actors": len(plan),
+            "actors_with_changes": 0,
+            "components": 0,
+            "changes": 0,
+            "unchanged_components": 0,
+            "no_component_actors": 0,
+            "errors": 0,
+        }
+        for item in plan:
+            change_count = len(item["changes"])
+            summary["changes"] += change_count
+            summary["components"] += item.get("component_count", 0)
+            summary["unchanged_components"] += item.get("unchanged", 0)
+            summary["errors"] += len(item["errors"])
+            if item.get("component_count", 0) == 0:
+                summary["no_component_actors"] += 1
+            if change_count:
+                summary["actors_with_changes"] += 1
+        return summary
+
+    def _execute_receives_decals_plan(self, plan, summary):
+        changes, report = self._collect_receives_decals_changes(plan, summary)
+        if not changes:
+            return report
+
+        action_name = f"SceneTools Receives Decals ({len(changes)} Components)"
+        self._apply_receives_decals_transaction(changes, report, action_name)
+        report["skipped"] = max(0, report["total"] - report["changed"] - report["failed"])
+        return report
+
+    def _collect_receives_decals_changes(self, plan, summary):
+        changes = []
+        report = {
+            "total": summary["changes"],
+            "changed": 0,
+            "skipped": summary["unchanged_components"] + summary["no_component_actors"],
+            "failed": summary["errors"],
+            "snapshots": [],
+            "failures": [],
+        }
+        for item in plan:
+            changes.extend(item["changes"])
+            for error in item["errors"]:
+                report["failures"].append({"name": item["name"], "reason": error})
+        return changes, report
+
+    def _apply_receives_decals_transaction(self, changes, report, action_name):
+        changed_before = report["changed"]
+        snapshot_count_before = len(report["snapshots"])
+        try:
+            with unreal.ScopedEditorTransaction(action_name):
+                self._apply_receives_decals_changes(changes, report)
+        except Exception as e:
+            if report["changed"] == changed_before and len(report["snapshots"]) == snapshot_count_before:
+                report["failed"] += len(changes)
+                report["failures"].append({
+                    "name": "ScopedEditorTransaction",
+                    "reason": f"事务创建失败，已取消执行以避免不可撤销修改：{str(e)}",
+                })
+                unreal.log_warning(f"SceneTools: 接受贴花事务创建失败，已取消执行 - {str(e)}")
+            else:
+                report["failed"] += 1
+                report["failures"].append({"name": "ScopedEditorTransaction", "reason": str(e)})
+                unreal.log_warning(f"SceneTools: 接受贴花事务结束异常，已保留当前执行结果 - {str(e)}")
+
+    def _start_receives_decals_frame_task(self, selected_actors, settings, plan, summary):
+        changes, report = self._collect_receives_decals_changes(plan, summary)
+        if len(changes) <= _FRAME_TASK_CHUNK_SIZE:
+            return False
+        if self._frame_task is not None:
+            msg = "已有分帧任务正在执行，请等待当前任务完成后再执行。"
+            self.data.set_text("txt_status", msg)
+            unreal.log_warning(f"SceneTools: {msg}")
+            return True
+
+        self._frame_task = {
+            "kind": "receives_decals",
+            "actors": list(selected_actors),
+            "settings": settings,
+            "plan": plan,
+            "summary": summary,
+            "changes": changes,
+            "index": 0,
+            "report": report,
+        }
+        if not self._register_frame_tick():
+            self._frame_task = None
+            return False
+
+        msg = f"接受贴花分帧执行开始：每帧处理 {_FRAME_TASK_CHUNK_SIZE} 项，待修改 {len(changes)} 项。"
+        self.data.set_text("txt_status", msg)
+        self.data.set_text("txt_receives_decals_preview", self._format_receives_decals_preview(plan, summary) + "\n\n" + msg)
+        unreal.log(f"SceneTools: {msg}")
+        return True
+
+    def _process_receives_decals_frame_task(self, task):
+        changes = task["changes"]
+        start_index = task["index"]
+        end_index = min(start_index + _FRAME_TASK_CHUNK_SIZE, len(changes))
+        chunk = changes[start_index:end_index]
+        action_name = f"SceneTools Receives Decals Frame ({start_index + 1}-{end_index}/{len(changes)})"
+        self._apply_receives_decals_transaction(chunk, task["report"], action_name)
+        task["index"] = end_index
+
+        if end_index >= len(changes):
+            self._finish_receives_decals_frame_task(task)
+            return
+
+        msg = f"接受贴花分帧执行中：{end_index}/{len(changes)} 已处理。"
+        self.data.set_text("txt_status", msg)
+
+    def _finish_receives_decals_frame_task(self, task):
+        report = task["report"]
+        report["skipped"] = max(0, report["total"] - report["changed"] - report["failed"])
+        selected_actors = task["actors"]
+        settings = task["settings"]
+        self._last_receives_decals_report = report
+
+        msg = (
+            f"接受贴花分帧执行完成：修改 {report['changed']}，跳过 {report['skipped']}，"
+            f"失败 {report['failed']}，共 {report['total']} 项。"
+        )
+        self.data.set_text("txt_status", msg)
+        unreal.log(f"SceneTools: {msg}")
+
+        refreshed_plan, refreshed_summary = self._build_receives_decals_plan(selected_actors, settings)
+        self._last_receives_decals_plan = refreshed_plan
+        preview_text = self._format_receives_decals_preview(refreshed_plan, refreshed_summary)
+        self.data.set_text("txt_receives_decals_preview", preview_text + "\n\n" + self._format_receives_decals_report(report))
+
+        self._frame_task = None
+        self._unregister_frame_tick()
+
+    def _apply_receives_decals_changes(self, changes, report):
+        for change in changes:
+            try:
+                if not self._mark_object_for_undo(change["target"], change["target_name"]):
+                    report["failed"] += 1
+                    report["failures"].append({
+                        "name": change["target_name"],
+                        "reason": "modify() 失败，已跳过以避免不可撤销修改",
+                    })
+                    continue
+
+                self._apply_receives_decals_change(change)
+                report["changed"] += 1
+                report["snapshots"].append({
+                    "name": change["target_name"],
+                    "owner": change.get("owner_name", ""),
+                    "label": change["label"],
+                    "old": change["old"],
+                    "new": change["new"],
+                })
+            except Exception as e:
+                report["failed"] += 1
+                report["failures"].append({"name": change["target_name"], "reason": str(e)})
+                unreal.log_warning(f"SceneTools: 接受贴花写入失败 {change['target_name']} - {str(e)}")
+
+    def _apply_receives_decals_change(self, change):
+        target = change["target"]
+        new_value = bool(change["new"])
+        if hasattr(target, "set_receives_decals"):
+            target.set_receives_decals(new_value)
+            return
+        target.set_editor_property("receives_decals", new_value)
+
+    def _format_receives_decals_preview(self, plan, summary):
+        lines = []
+        lines.append("=== Receives Decals Preview ===")
+        lines.append(
+            f"Changes: {summary['changes']} | Actors: {summary['actors_with_changes']} / {summary['actors']} | Components: {summary['components']} | Unchanged Components: {summary['unchanged_components']} | No Component Actors: {summary['no_component_actors']} | Errors: {summary['errors']}"
+        )
+        lines.append("")
+
+        max_rows = 140
+        row_count = 0
+        for item in plan:
+            if item.get("component_count", 0) == 0:
+                row_count += 1
+                if row_count <= max_rows:
+                    lines.append(f"{row_count:03d}. [SKIP] {item['name']}  no PrimitiveComponent")
+            for change in item["changes"]:
+                row_count += 1
+                if row_count <= max_rows:
+                    owner = change.get("owner_name", item["name"])
+                    lines.append(
+                        f"{row_count:03d}. [CHANGE] {owner} :: {change['target_name']}  {change['label']}: {change['old']} -> {change['new']}"
+                    )
+            for error in item["errors"]:
+                row_count += 1
+                if row_count <= max_rows:
+                    lines.append(f"{row_count:03d}. [ERR] {item['name']}  {error}")
+
+        if row_count == 0:
+            lines.append("No changes needed.")
+        elif row_count > max_rows:
+            lines.append("")
+            lines.append(f"... {row_count - max_rows} more rows omitted")
+
+        return "\n".join(lines)
+
+    def _format_receives_decals_report(self, report):
+        lines = []
+        lines.append("=== Last Receives Decals Execution ===")
+        lines.append(
+            f"Changed: {report['changed']} | Skipped: {report['skipped']} | Failed: {report['failed']} | Total: {report['total']}"
+        )
+        lines.append("")
+
+        max_rows = 100
+        for index, snapshot in enumerate(report["snapshots"][:max_rows], 1):
+            owner_prefix = f"{snapshot['owner']} :: " if snapshot.get("owner") else ""
+            lines.append(
+                f"{index:03d}. [SET] {owner_prefix}{snapshot['name']}  {snapshot['label']}: {snapshot['old']} -> {snapshot['new']}"
+            )
+
+        if len(report["snapshots"]) > max_rows:
+            lines.append(f"... {len(report['snapshots']) - max_rows} more changed rows omitted")
+
+        if report["failures"]:
+            lines.append("")
+            lines.append("Failures:")
+            for failure in report["failures"][:30]:
+                lines.append(f"- {failure['name']}: {failure['reason']}")
+
+        return "\n".join(lines)
+
+    def _read_decal_to_plane_settings(self):
+        suffix = str(self.data.get_text("input_decal_plane_suffix")).strip()
+        if not suffix:
+            suffix = "_Plane"
+        return {
+            "suffix": suffix,
+            "copy_material": self._get_checkbox_checked("chk_decal_plane_copy_material"),
+            "hide_source": self._get_checkbox_checked("chk_decal_plane_hide_source"),
+            "plane_asset_path": "/Engine/BasicShapes/Plane.Plane",
+        }
+
+    def _build_decal_to_plane_plan(self, actors, settings):
+        plan = []
+        for actor in actors:
+            actor_name = self._safe_actor_name(actor)
+            try:
+                if not isinstance(actor, unreal.DecalActor):
+                    plan.append({
+                        "action": "skip",
+                        "actor": actor,
+                        "name": actor_name,
+                        "reason": "不是 DecalActor",
+                    })
+                    continue
+
+                decal_component = self._get_decal_component(actor)
+                if decal_component is None:
+                    plan.append({
+                        "action": "error",
+                        "actor": actor,
+                        "name": actor_name,
+                        "reason": "无法获取 DecalComponent",
+                    })
+                    continue
+
+                decal_size = self._get_decal_size(decal_component)
+                if decal_size is None:
+                    plan.append({
+                        "action": "error",
+                        "actor": actor,
+                        "name": actor_name,
+                        "reason": "无法读取 Decal Size",
+                    })
+                    continue
+
+                material = self._get_decal_material(actor, decal_component) if settings["copy_material"] else None
+                material_mode = self._describe_decal_plane_material_mode(material)
+                location, rotation, scale, dimensions = self._make_decal_plane_transform(actor, decal_component, decal_size)
+                label = self._make_decal_plane_label(actor, settings["suffix"])
+                plan.append({
+                    "action": "convert",
+                    "actor": actor,
+                    "name": actor_name,
+                    "label": label,
+                    "decal_size": decal_size,
+                    "location": location,
+                    "rotation": rotation,
+                    "scale": scale,
+                    "dimensions": dimensions,
+                    "material": material,
+                    "material_name": self._safe_object_name(material) if material is not None else "<None>",
+                    "material_mode": material_mode,
+                })
+            except Exception as e:
+                plan.append({"action": "error", "actor": actor, "name": actor_name, "reason": str(e)})
+
+        return plan, self._summarize_decal_to_plane_plan(plan)
+
+    def _summarize_decal_to_plane_plan(self, plan):
+        summary = {"total": len(plan), "ready": 0, "skipped": 0, "errors": 0}
+        for item in plan:
+            if item["action"] == "convert":
+                summary["ready"] += 1
+            elif item["action"] == "skip":
+                summary["skipped"] += 1
+            elif item["action"] == "error":
+                summary["errors"] += 1
+        return summary
+
+    def _execute_decal_to_plane_plan(self, plan, summary, settings):
+        convert_items = [item for item in plan if item["action"] == "convert"]
+        report = self._create_decal_to_plane_report(plan, summary)
+        if not convert_items:
+            return report
+
+        action_name = f"SceneTools Decal To Plane ({len(convert_items)} Decals)"
+        self._apply_decal_to_plane_transaction(convert_items, report, settings, action_name)
+        return report
+
+    def _create_decal_to_plane_report(self, plan, summary):
+        report = {
+            "total": summary["total"],
+            "created": 0,
+            "skipped": summary["skipped"],
+            "failed": summary["errors"],
+            "snapshots": [],
+            "failures": [],
+        }
+        for item in plan:
+            if item["action"] == "error":
+                report["failures"].append({"name": item["name"], "reason": item.get("reason", "")})
+        return report
+
+    def _apply_decal_to_plane_transaction(self, convert_items, report, settings, action_name):
+        created_before = report["created"]
+        snapshot_count_before = len(report["snapshots"])
+        try:
+            with unreal.ScopedEditorTransaction(action_name):
+                self._apply_decal_to_plane_items(convert_items, report, settings)
+        except Exception as e:
+            if report["created"] == created_before and len(report["snapshots"]) == snapshot_count_before:
+                report["failed"] += len(convert_items)
+                report["failures"].append({
+                    "name": "ScopedEditorTransaction",
+                    "reason": f"事务创建失败，已取消执行以避免不可撤销修改：{str(e)}",
+                })
+                unreal.log_warning(f"SceneTools: 贴花转平面事务创建失败，已取消执行 - {str(e)}")
+            else:
+                report["failed"] += 1
+                report["failures"].append({"name": "ScopedEditorTransaction", "reason": str(e)})
+                unreal.log_warning(f"SceneTools: 贴花转平面事务结束异常，已保留当前执行结果 - {str(e)}")
+
+    def _start_decal_to_plane_frame_task(self, selected_actors, settings, plan, summary):
+        convert_items = [item for item in plan if item["action"] == "convert"]
+        if len(convert_items) <= _FRAME_TASK_CHUNK_SIZE:
+            return False
+        if self._frame_task is not None:
+            msg = "已有分帧任务正在执行，请等待当前任务完成后再执行。"
+            self.data.set_text("txt_status", msg)
+            unreal.log_warning(f"SceneTools: {msg}")
+            return True
+
+        self._frame_task = {
+            "kind": "decal_to_plane",
+            "actors": list(selected_actors),
+            "settings": settings,
+            "plan": plan,
+            "summary": summary,
+            "convert_items": convert_items,
+            "index": 0,
+            "report": self._create_decal_to_plane_report(plan, summary),
+        }
+        if not self._register_frame_tick():
+            self._frame_task = None
+            return False
+
+        msg = f"贴花转平面分帧执行开始：每帧处理 {_FRAME_TASK_CHUNK_SIZE} 个，待转换 {len(convert_items)} 个。"
+        self.data.set_text("txt_status", msg)
+        self.data.set_text("txt_decal_to_plane_preview", self._format_decal_to_plane_preview(plan, summary) + "\n\n" + msg)
+        unreal.log(f"SceneTools: {msg}")
+        return True
+
+    def _process_decal_to_plane_frame_task(self, task):
+        convert_items = task["convert_items"]
+        start_index = task["index"]
+        end_index = min(start_index + _FRAME_TASK_CHUNK_SIZE, len(convert_items))
+        chunk = convert_items[start_index:end_index]
+        action_name = f"SceneTools Decal To Plane Frame ({start_index + 1}-{end_index}/{len(convert_items)})"
+        self._apply_decal_to_plane_transaction(chunk, task["report"], task["settings"], action_name)
+        task["index"] = end_index
+
+        if end_index >= len(convert_items):
+            self._finish_decal_to_plane_frame_task(task)
+            return
+
+        msg = f"贴花转平面分帧执行中：{end_index}/{len(convert_items)} 已处理。"
+        self.data.set_text("txt_status", msg)
+
+    def _finish_decal_to_plane_frame_task(self, task):
+        report = task["report"]
+        self._last_decal_to_plane_report = report
+
+        msg = (
+            f"贴花转平面分帧执行完成：生成 {report['created']}，跳过 {report['skipped']}，"
+            f"失败 {report['failed']}，共 {report['total']}。"
+        )
+        self.data.set_text("txt_status", msg)
+        unreal.log(f"SceneTools: {msg}")
+        self.data.set_text(
+            "txt_decal_to_plane_preview",
+            self._format_decal_to_plane_preview(task["plan"], task["summary"]) + "\n\n" + self._format_decal_to_plane_report(report),
+        )
+
+        self._frame_task = None
+        self._unregister_frame_tick()
+
+    def _apply_decal_to_plane_items(self, convert_items, report, settings):
+        plane_mesh = self._load_plane_mesh(settings["plane_asset_path"])
+        if plane_mesh is None:
+            raise RuntimeError(f"无法加载 Plane StaticMesh：{settings['plane_asset_path']}")
+
+        for item in convert_items:
+            try:
+                source_actor = item["actor"]
+                if not self._mark_object_for_undo(source_actor, item["name"]):
+                    report["failed"] += 1
+                    report["failures"].append({"name": item["name"], "reason": "源 Actor modify() 失败"})
+                    continue
+
+                plane_actor = self._spawn_plane_actor_from_item(item, plane_mesh)
+                if plane_actor is None:
+                    raise RuntimeError("生成 Plane Actor 失败")
+
+                plane_component = self._get_static_mesh_component(plane_actor)
+                if plane_component is None:
+                    raise RuntimeError("生成的 Actor 缺少 StaticMeshComponent")
+
+                self._mark_object_for_undo(plane_actor, item["label"])
+                self._mark_object_for_undo(plane_component, f"{item['label']} StaticMeshComponent")
+
+                material_to_apply = None
+                material_applied = False
+                material_apply_name = "<None>"
+                material_apply_mode = "none"
+                material_note = ""
+                if item.get("material") is not None:
+                    material_to_apply, material_apply_mode, material_note = self._resolve_decal_plane_material(item["material"])
+                    material_apply_name = self._safe_object_name(material_to_apply) if material_to_apply is not None else "<None>"
+                    if material_to_apply is not None:
+                        material_applied = self._apply_material_to_plane_component(plane_component, material_to_apply)
+
+                if settings["hide_source"]:
+                    self._set_actor_editor_visibility(source_actor, False)
+
+                report["created"] += 1
+                report["snapshots"].append({
+                    "source": item["name"],
+                    "created": item["label"],
+                    "source_material": item["material_name"],
+                    "material": material_apply_name,
+                    "material_mode": material_apply_mode,
+                    "material_note": material_note,
+                    "material_applied": material_applied,
+                    "scale": (item["scale"].x, item["scale"].y, item["scale"].z),
+                    "dimensions": item["dimensions"],
+                    "hidden_source": bool(settings["hide_source"]),
+                })
+            except Exception as e:
+                report["failed"] += 1
+                report["failures"].append({"name": item["name"], "reason": str(e)})
+                unreal.log_warning(f"SceneTools: 贴花转平面失败 {item['name']} - {str(e)}")
+
+    def _spawn_plane_actor_from_item(self, item, plane_mesh):
+        actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        plane_actor = actor_subsystem.spawn_actor_from_object(plane_mesh, item["location"], item["rotation"], False)
+        if plane_actor is None:
+            return None
+        try:
+            plane_actor.set_actor_label(item["label"], True)
+        except Exception:
+            pass
+        plane_actor.set_actor_scale3d(item["scale"])
+        return plane_actor
+
+    def _apply_material_to_plane_component(self, plane_component, material):
+        try:
+            plane_component.set_material(0, material)
+        except Exception as e:
+            unreal.log_warning(f"SceneTools: set_material 贴花材质失败 - {str(e)}")
+
+        try:
+            plane_component.set_editor_property("override_materials", [material])
+        except Exception:
+            pass
+
+        try:
+            current_material = plane_component.get_material(0)
+            if current_material is not None and self._safe_object_name(current_material) == self._safe_object_name(material):
+                return True
+        except Exception:
+            pass
+
+        return False
+
+    def _describe_decal_plane_material_mode(self, material):
+        if material is None:
+            return "none"
+        return "direct-source"
+
+    def _resolve_decal_plane_material(self, material):
+        if material is None:
+            return None, "none", ""
+        note = "source Decal material assigned directly"
+        return material, "direct-source", note
+
+    def _load_plane_mesh(self, plane_asset_path):
+        try:
+            plane_mesh = unreal.load_asset(plane_asset_path)
+            if plane_mesh is not None:
+                return plane_mesh
+        except Exception:
+            pass
+        try:
+            return unreal.EditorAssetLibrary.load_asset(plane_asset_path)
+        except Exception:
+            return None
+
+    def _get_decal_component(self, actor):
+        try:
+            return actor.decal()
+        except Exception:
+            return self._safe_get_editor_property(actor, "decal")
+
+    def _get_decal_size(self, decal_component):
+        try:
+            return decal_component.decal_size()
+        except Exception:
+            return self._safe_get_editor_property(decal_component, "decal_size")
+
+    def _get_decal_material(self, actor, decal_component):
+        material = self._safe_get_editor_property(decal_component, "decal_material")
+        if material is not None:
+            return material
+        try:
+            return actor.get_decal_material()
+        except Exception:
+            pass
+        try:
+            return decal_component.get_decal_material()
+        except Exception:
+            pass
+        try:
+            return decal_component.decal_material()
+        except Exception:
+            return self._safe_get_editor_property(decal_component, "decal_material")
+
+    def _get_static_mesh_component(self, actor):
+        try:
+            if isinstance(actor, unreal.StaticMeshActor):
+                return actor.static_mesh_component()
+        except Exception:
+            pass
+        components = self._get_actor_components_by_class(actor, unreal.StaticMeshComponent)
+        return components[0] if components else None
+
+    def _make_decal_plane_transform(self, actor, decal_component, decal_size):
+        source_location = actor.get_actor_location()
+        component_scale = self._get_decal_component_world_scale(actor, decal_component)
+
+        depth = max(abs(float(decal_size.x) * abs(float(component_scale.x))), 1.0)
+        decal_width = max(abs(float(decal_size.y) * abs(float(component_scale.y))), 1.0)
+        decal_height = max(abs(float(decal_size.z) * abs(float(component_scale.z))), 1.0)
+
+        surface_location = unreal.Vector(float(source_location.x), float(source_location.y), float(source_location.z))
+        right, up = self._get_decal_component_surface_axes(actor, decal_component)
+        plane_width, plane_height = self._estimate_zero_rotation_plane_size(right, up, decal_width, decal_height)
+        size_source = "component_world_scale"
+        size_multiplier = _DECAL_TO_PLANE_SIZE_MULTIPLIER
+        if plane_width is not None and plane_height is not None:
+            plane_width *= size_multiplier
+            plane_height *= size_multiplier
+        if plane_width is None or plane_height is None:
+            plane_width, plane_height, size_source = self._get_decal_bounds_plane_size(actor)
+            size_multiplier = 1.0
+        if plane_width is None or plane_height is None:
+            plane_width = decal_width
+            plane_height = decal_height
+            size_source = "decal_size_world_fallback"
+            size_multiplier = 1.0
+        plane_rotation = unreal.Rotator(0.0, 0.0, 0.0)
+        plane_scale = unreal.Vector(plane_width / 100.0, plane_height / 100.0, 1.0)
+        return surface_location, plane_rotation, plane_scale, {
+            "depth": depth,
+            "decal_width": decal_width,
+            "decal_height": decal_height,
+            "width": plane_width,
+            "height": plane_height,
+            "size_source": size_source,
+            "size_multiplier": size_multiplier,
+            "world_scale": (component_scale.x, component_scale.y, component_scale.z),
+        }
+
+    def _get_decal_component_world_scale(self, actor, decal_component):
+        try:
+            scale = decal_component.get_world_scale()
+            if scale is not None:
+                return scale
+        except Exception:
+            pass
+        try:
+            scale = decal_component.relative_scale3d()
+            actor_scale = actor.get_actor_scale3d()
+            return unreal.Vector(
+                float(scale.x) * float(actor_scale.x),
+                float(scale.y) * float(actor_scale.y),
+                float(scale.z) * float(actor_scale.z),
+            )
+        except Exception:
+            return actor.get_actor_scale3d()
+
+    def _get_decal_component_surface_axes(self, actor, decal_component):
+        try:
+            return decal_component.get_right_vector(), decal_component.get_up_vector()
+        except Exception:
+            source_rotation = actor.get_actor_rotation()
+            return unreal.MathLibrary.get_right_vector(source_rotation), unreal.MathLibrary.get_up_vector(source_rotation)
+
+    def _get_decal_bounds_plane_size(self, actor):
+        try:
+            _origin, extent = actor.get_actor_bounds(False, True)
+            width = abs(float(extent.x)) * 2.0
+            height = abs(float(extent.y)) * 2.0
+            if width >= 1.0 and height >= 1.0:
+                return width, height, "actor_bounds"
+        except Exception as e:
+            unreal.log_warning(f"SceneTools: 读取 DecalActor Bounds 失败 {self._safe_actor_name(actor)} - {str(e)}")
+        return None, None, "decal_size_projection"
+
+    def _estimate_zero_rotation_plane_size(self, decal_right, decal_up, decal_width, decal_height):
+        width_axis = self._scale_vector(decal_right, decal_width)
+        height_axis = self._scale_vector(decal_up, decal_height)
+
+        plane_width = abs(float(width_axis.x)) + abs(float(height_axis.x))
+        plane_height = abs(float(width_axis.y)) + abs(float(height_axis.y))
+
+        if plane_width < 1.0 or plane_height < 1.0:
+            return decal_width, decal_height
+        return max(plane_width, 1.0), max(plane_height, 1.0)
+
+    def _make_plane_rotation_from_decal_axes(self, source_rotation, decal_right, decal_up):
+        try:
+            return unreal.MathLibrary.make_rot_from_xy(decal_right, self._negate_vector(decal_up))
+        except Exception:
+            try:
+                return unreal.MathLibrary.compose_rotators(source_rotation, unreal.Rotator(0.0, 90.0, 0.0))
+            except Exception:
+                return source_rotation
+
+    def _scale_vector(self, vector, scale):
+        return unreal.Vector(float(vector.x) * scale, float(vector.y) * scale, float(vector.z) * scale)
+
+    def _add_vectors(self, first, second):
+        return unreal.Vector(float(first.x) + float(second.x), float(first.y) + float(second.y), float(first.z) + float(second.z))
+
+    def _negate_vector(self, vector):
+        return unreal.Vector(-float(vector.x), -float(vector.y), -float(vector.z))
+
+    def _make_decal_plane_label(self, actor, suffix):
+        try:
+            base_name = actor.get_actor_label(True)
+        except Exception:
+            base_name = self._safe_actor_name(actor)
+        return f"{base_name}{suffix}"
+
+    def _format_decal_to_plane_preview(self, plan, summary):
+        lines = []
+        lines.append("=== Decal To Plane Preview ===")
+        lines.append(
+            f"Convert: {summary['ready']} | Skip: {summary['skipped']} | Error: {summary['errors']} | Total: {summary['total']}"
+        )
+        lines.append("")
+
+        if not plan:
+            lines.append("No selected actors.")
+            return "\n".join(lines)
+
+        max_rows = 120
+        for index, item in enumerate(plan[:max_rows], 1):
+            if item["action"] == "convert":
+                size = item["decal_size"]
+                scale = item["scale"]
+                dimensions = item["dimensions"]
+                lines.append(
+                    f"{index:03d}. [CONVERT] {item['name']} -> {item['label']}  decalSize=({size.x:.2f}, {size.y:.2f}, {size.z:.2f})  planeWH=({dimensions['width']:.2f}, {dimensions['height']:.2f})  sizeSource={dimensions.get('size_source', 'unknown')}  sizeMul={dimensions.get('size_multiplier', 1.0):.1f}  scale=({scale.x:.2f}, {scale.y:.2f}, {scale.z:.2f})  rotation=(0,0,0)  material={item['material_name']} [{item.get('material_mode', 'none')}]"
+                )
+            elif item["action"] == "skip":
+                lines.append(f"{index:03d}. [SKIP] {item['name']}  {item.get('reason', '')}")
+            else:
+                lines.append(f"{index:03d}. [ERR] {item['name']}  {item.get('reason', '')}")
+
+        if len(plan) > max_rows:
+            lines.append("")
+            lines.append(f"... {len(plan) - max_rows} more rows omitted")
+
+        return "\n".join(lines)
+
+    def _format_decal_to_plane_report(self, report):
+        lines = []
+        lines.append("=== Last Decal To Plane Execution ===")
+        lines.append(
+            f"Created: {report['created']} | Skipped: {report['skipped']} | Failed: {report['failed']} | Total: {report['total']}"
+        )
+        lines.append("")
+
+        max_rows = 100
+        for index, snapshot in enumerate(report["snapshots"][:max_rows], 1):
+            scale = snapshot["scale"]
+            dimensions = snapshot.get("dimensions", {})
+            hidden_text = " hidden_source=True" if snapshot.get("hidden_source") else ""
+            material_text = "applied" if snapshot.get("material_applied") else "not-applied"
+            note_text = f" note={snapshot.get('material_note')}" if snapshot.get("material_note") else ""
+            lines.append(
+                f"{index:03d}. [CREATED] {snapshot['source']} -> {snapshot['created']}  sourceMat={snapshot.get('source_material', '<None>')}  planeMat={snapshot['material']} [{snapshot.get('material_mode', 'none')}] ({material_text})  planeWH=({dimensions.get('width', 0.0):.2f}, {dimensions.get('height', 0.0):.2f})  sizeSource={dimensions.get('size_source', 'unknown')}  sizeMul={dimensions.get('size_multiplier', 1.0):.1f}  scale=({scale[0]:.2f}, {scale[1]:.2f}, {scale[2]:.2f}){hidden_text}{note_text}"
+            )
+
+        if len(report["snapshots"]) > max_rows:
+            lines.append(f"... {len(report['snapshots']) - max_rows} more created rows omitted")
+
+        if report["failures"]:
+            lines.append("")
+            lines.append("Failures:")
+            for failure in report["failures"][:30]:
+                lines.append(f"- {failure['name']}: {failure['reason']}")
+
+        return "\n".join(lines)
+
     def _build_align_distribution_plan(self, actors, mode):
         axis_names = self._read_align_axes()
         step = self._get_float_from_ui("input_align_step", 100.0)
@@ -1922,6 +2830,13 @@ class SceneToolsController:
         except Exception:
             value = self._safe_get_editor_property(component, "ld_max_draw_distance")
             return float(value) if value is not None else None
+
+    def _get_component_receives_decals(self, component):
+        try:
+            return bool(component.receives_decals())
+        except Exception:
+            value = self._safe_get_editor_property(component, "receives_decals")
+            return bool(value) if value is not None else None
 
     def _mark_object_for_undo(self, obj, object_name):
         try:

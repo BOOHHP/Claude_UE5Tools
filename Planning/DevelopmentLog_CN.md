@@ -1,5 +1,37 @@
 # TA 工具开发日志
 
+## 2026-05-07 - SceneTools Iteration 3：11 贴花转平面模型 v1
+
+- 模块：`TAPython/Python/SceneTools/`
+- 范围：按 Iteration 3 继续并入 `11_贴花转平面模型` 的首个可用版本。
+- UI：SceneTools 新增“贴花转平面”折叠面板，提供命名后缀、赋予材质、生成后隐藏源贴花、预览和执行按钮。
+- 逻辑：新增 `preview_decal_to_plane_batch()` / `execute_decal_to_plane_batch()`，仅处理已选 `DecalActor`，非贴花 Actor 在预览中标记跳过。
+- 转换策略：加载 `/Engine/BasicShapes/Plane.Plane`，通过 `EditorActorSubsystem.spawn_actor_from_object()` 生成 StaticMeshActor；Plane 缩放按 Decal Size 的 Y/Z 映射到基础 Plane 的 X/Y 尺寸；材质默认赋予 Decal 材质到 Plane 第 0 槽。
+- 执行策略：执行路径使用 `ScopedEditorTransaction`，写入前对源 Actor、新 Actor 和 StaticMeshComponent 调用 `modify()`；超过 50 个待转换贴花时复用 timer 分帧执行底座。
+- 当前边界：v1 保留源 DecalActor，不做删除；“隐藏源贴花”只是可选编辑器隐藏。贴花投射方向到平面法线的朝向补偿需在 UE 实测后根据项目素材确认。
+- 下一步：在 UE 中验证生成位置、缩放、材质与 Ctrl+Z；通过后继续 `G-14 场景无效 Actor 清理工具`。
+- UE 反馈修正 1：初版直接复用 DecalActor 旋转，导致 Decal 默认 -90° 投射旋转被带到 Plane；位置也停留在投射盒中心，尺寸与材质不稳定。已改为用 Decal 的 Right/Up 轴重建 Plane 朝向，将位置推进到投射盒前端，并按 Decal Size 的 Y/Z 与 Actor 缩放计算 Plane 宽高；材质写入增加 `override_materials` 回退与应用状态报告。
+- UE 反馈修正 2：实测确认项目内目标 Decal 转 Plane 时 StaticMeshActor Rotation 应归零；已将生成 Plane 的 Rotation 固定为 `(0,0,0)`，并改为把 Decal 表面宽高轴投影到世界 XY 平面后换算 Plane 缩放。
+- UE 反馈修正 3：进一步实测后确认转换完成后直接赋源 Decal 材质更符合当前项目效果，已取消自动 Surface 代理材质路径；Plane 的世界 X/Y/Z 均固定为源 DecalActor 中心，确保转换后 Plane 中心位置与 Decal 中心一致。执行报告继续输出源材质、Plane 材质、转换模式和应用状态。
+- UE 反馈修正 4：实测确认 `Decal Size` 是 local space，tooltip 明确说明不包含 component scale；已将真实尺寸主路径改为 `DecalComponent.decal_size() * DecalComponent.get_world_scale()`，再使用 DecalComponent 世界 Right/Up 轴投影到零旋转 Plane 的 X/Y 尺寸。取不到组件世界缩放或有效投影时再回退 Actor Bounds / Decal Size；预览和执行报告新增 `sizeSource=component_world_scale/actor_bounds/decal_size_world_fallback`。
+- UE 反馈修正 5：实测确认 `component_world_scale` 路径计算出的 X/Y 尺寸需要各自乘以 2，才与源 Decal 绿色边界完全一致；已为该主路径加入 `_DECAL_TO_PLANE_SIZE_MULTIPLIER = 2.0`，Actor Bounds 和最终 Decal Size 回退不额外放大；预览和执行报告新增 `sizeMul=2.0/1.0`。
+- UE 验证结果：用户在 UE 视口确认 `sizeSource=component_world_scale` 且应用 `sizeMul=2.0` 后，生成 Plane 的比例大小已与源 Decal 绿色边界一致；11 v1 尺寸逻辑当前可作为后续迭代基线。
+
+---
+
+## 2026-05-07 - SceneTools Iteration 3：05 批量开关接受贴花 v1
+
+- 模块：`TAPython/Python/SceneTools/`
+- 范围：按待开发记录进入 Iteration 3，优先并入 `05_批量开关接受贴花` 的关卡实例模式。
+- UI：SceneTools 新增“接受贴花”折叠面板，提供目标状态勾选、预览按钮、执行按钮和只读预览/报告输出区。
+- 逻辑：新增 `preview_receives_decals_batch()` / `execute_receives_decals_batch()`，扫描已选 Actor 下的 `PrimitiveComponent`，基于 `receives_decals()` 生成差异计划，只写入实际变化项。
+- 执行策略：执行路径使用 `ScopedEditorTransaction`，写入前对目标组件调用 `modify()`；大批量变更超过 50 项时复用 timer 分帧执行底座自动推进。
+- API依据：当前 UE stub 确认 `unreal.PrimitiveComponent.receives_decals()` 与 `unreal.PrimitiveComponent.set_receives_decals(new_receives_decals: bool)` 可用；写入失败时回退 `set_editor_property("receives_decals", value)`。
+- 当前边界：v1 仅处理关卡已选 Actor 的组件实例，不回写蓝图源资产；蓝图源同步作为 05 的后续高级模式。
+- 下一步：验证 UE 内预览/执行/撤销链路；通过后继续 Iteration 3 的 `11_贴花转平面模型` 或 `G-14 场景无效 Actor 清理`。
+
+---
+
 ## 2026-05-07 - SceneTools Iteration 2.1：先沉淀场景批处理底座
 
 - 模块：`TAPython/Python/SceneTools/`

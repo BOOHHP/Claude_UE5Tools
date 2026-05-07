@@ -50,7 +50,8 @@
 - 输入：关卡中选中的 DecalActor。
 - 输出：新 Plane Actor（命名为 原名_Plane）。
 - 场景使用：移动端优化、特效烘焙、贴花转可控几何体的后期整理。
-- 开发逻辑：先采样 Decal 参数构建转换计划，再生成 Plane Actor 并复制材质与关键变换信息。
+- 开发逻辑：先采样 Decal 参数构建转换计划，再生成 Plane Actor 并赋予材质与关键变换信息。
+- 当前实现状态：已并入 SceneTools；根据 UE 实测，生成 Plane 固定使用零旋转；尺寸优先按 Decal Size 乘 DecalComponent 世界缩放后，再用组件世界 Right/Up 轴投影到 Plane X/Y，并对该主路径应用 2 倍映射系数以匹配源 Decal 绿色边界；取不到有效组件数据时回退 Actor Bounds / Decal Size；位置 X/Y/Z 对齐源 DecalActor 中心；材质直接赋源 Decal 材质，不再自动生成 Surface 代理材质。
 - 性能调整规划：
 	- 支持共享材质实例缓存，避免重复创建 MI。
 	- 批量转换时关闭实时刷新，结束后统一重绘。
@@ -492,10 +493,20 @@
 
 ### Iteration 3（高风险能力并入）
 
+状态更新（2026-05-07）：
+- 已完成 v1：`05_批量开关接受贴花` 已并入 SceneTools，先覆盖关卡选中 Actor 的实例级 `PrimitiveComponent.receives_decals` 开关。
+- 复用底座：05 v1 已复用预览-执行双阶段、事务撤销、组件 `modify()`、失败报告、执行快照和 timer 分帧调度。
+- 待增强：05 的蓝图源资产同步回写尚未实现，后续作为高级选项补充；当前版本不编译或保存蓝图资产。
+- 已完成 v1：`11_贴花转平面模型` 已并入 SceneTools，支持将已选 DecalActor 预览并生成 Plane StaticMeshActor，默认赋予源 Decal 材质，并按 Decal Size 乘 DecalComponent 世界缩放计算真实世界尺寸，再对主路径 X/Y 应用 2 倍映射系数。
+- 复用底座：11 v1 已复用预览-执行双阶段、事务撤销、执行快照、失败报告和 timer 分帧调度；源 DecalActor 默认保留，可选生成后隐藏。
+- 修正补充：根据 UE 实测反馈，贴花转平面生成的 Plane 固定零旋转，位置 X/Y/Z 对齐源 DecalActor 中心；尺寸使用 `DecalComponent.get_world_scale()` 补上 Decal Size 不包含的组件缩放，再按组件世界 Right/Up 轴投影到 Plane X/Y，并乘以 2 匹配源 Decal 绿色边界；取不到有效组件数据时回退 Actor Bounds / Decal Size。
+- UE 验证：已确认 `component_world_scale` 主路径在应用 2 倍映射系数后，生成 Plane 的比例大小与源 Decal 绿色边界一致；11 v1 尺寸逻辑进入当前可用基线。
+- 下一步：继续 Iteration 3 的 `G-14 场景无效 Actor 清理工具`。
+
 - 并入工具
-	- 11_贴花转平面模型
+	- 11_贴花转平面模型（v1 已完成，待 UE 验证朝向补偿）
 	- G-14 场景无效 Actor 清理工具
-	- 05_批量开关接受贴花（先实例模式，蓝图回写作为高级选项）
+	- 05_批量开关接受贴花（实例模式 v1 已完成；蓝图回写作为高级选项）
 
 - Python 改动点（SceneTools.py）
 	- 新增执行函数：
