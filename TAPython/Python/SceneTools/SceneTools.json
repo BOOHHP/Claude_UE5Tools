@@ -530,6 +530,73 @@
                                                             },
                                                             {
                                                                 "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 6],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "VAlign": "VAlign_Center",
+                                                                            "STextBlock": {
+                                                                                "Aka": "txt_invalid_actor_result_info",
+                                                                                "Text": "无扫描结果。",
+                                                                                "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                                                                "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                                                "AutoWrapText": true
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [8, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Aka": "btn_invalid_actor_select_selected_results",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [12, 4],
+                                                                                "Text": "选中所选结果",
+                                                                                "OnClick": "SceneTools.instance.select_selected_invalid_actor_results()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "Padding": [6, 0, 0, 0],
+                                                                            "SButton": {
+                                                                                "Aka": "btn_invalid_actor_export_report",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [12, 4],
+                                                                                "Text": "导出报告",
+                                                                                "OnClick": "SceneTools.instance.export_invalid_actor_report()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SBox": {
+                                                                    "MaxDesiredHeight": 140,
+                                                                    "MinDesiredHeight": 76,
+                                                                    "Content": {
+                                                                        "SListView": {
+                                                                            "Aka": "list_invalid_actor_results",
+                                                                            "ItemHeight": 18,
+                                                                            "ListItemsSource": [],
+                                                                            "SHeaderRow": {
+                                                                                "Columns": [
+                                                                                    {
+                                                                                        "DefaultLabel": "扫描结果明细（Ctrl/Shift 多选，双击定位 Actor）",
+                                                                                        "FillWidth": 1
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            "SelectionMode": "Multi",
+                                                                            "OnSelectionChanged": "SceneTools.instance.on_invalid_actor_result_selection_changed(%item, %index)",
+                                                                            "OnMouseButtonDoubleClick": "SceneTools.instance.on_invalid_actor_result_double_click(%item, %index)"
+                                                                        }
+                                                                    }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
                                                                 "SBorder": {
                                                                     "Padding": 8,
                                                                     "BorderImage": {
