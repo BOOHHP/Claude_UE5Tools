@@ -202,62 +202,6 @@ class SceneToolsController:
             self.data.set_text("txt_status", error_msg)
 
     # ------------------------------------------------------------------
-    # Visibility 功能：批量隐藏 / 显示
-    # ------------------------------------------------------------------
-
-    def execute_hide(self):
-        try:
-            actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-            selected_actors = actor_subsystem.get_selected_level_actors()
-
-            if not selected_actors:
-                self.data.set_text("txt_status", "提示：没有选中的物件。")
-                return
-
-            hidden_count = 0
-            for actor in selected_actors:
-                try:
-                    if self._set_actor_editor_visibility(actor, False):
-                        hidden_count += 1
-                except Exception as e:
-                    unreal.log_warning(f"SceneTools: 隐藏 Actor {actor.get_name()} 失败 - {str(e)}")
-
-            msg = f"已隐藏 {hidden_count} / {len(selected_actors)} 个物件。"
-            self.data.set_text("txt_status", msg)
-            unreal.log(f"SceneTools: {msg}")
-
-        except Exception as e:
-            error_msg = f"隐藏失败：{str(e)}"
-            unreal.log_error(f"SceneTools execute_hide: {error_msg}")
-            self.data.set_text("txt_status", error_msg)
-
-    def execute_show(self):
-        try:
-            actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-            selected_actors = actor_subsystem.get_selected_level_actors()
-
-            if not selected_actors:
-                self.data.set_text("txt_status", "提示：没有选中的物件。")
-                return
-
-            shown_count = 0
-            for actor in selected_actors:
-                try:
-                    if self._set_actor_editor_visibility(actor, True):
-                        shown_count += 1
-                except Exception as e:
-                    unreal.log_warning(f"SceneTools: 显示 Actor {actor.get_name()} 失败 - {str(e)}")
-
-            msg = f"已显示 {shown_count} / {len(selected_actors)} 个物件。"
-            self.data.set_text("txt_status", msg)
-            unreal.log(f"SceneTools: {msg}")
-
-        except Exception as e:
-            error_msg = f"显示失败：{str(e)}"
-            unreal.log_error(f"SceneTools execute_show: {error_msg}")
-            self.data.set_text("txt_status", error_msg)
-
-    # ------------------------------------------------------------------
     # Iteration 1：变换、标签图层、导出
     # ------------------------------------------------------------------
 
@@ -313,63 +257,6 @@ class SceneToolsController:
         except Exception as e:
             error_msg = f"重置变换失败：{str(e)}"
             unreal.log_error(f"SceneTools execute_reset_transform: {error_msg}")
-            self.data.set_text("txt_status", error_msg)
-
-    def execute_apply_layer_group(self):
-        """将图层与分组应用到已选 Actor（Tag 由专用「设置 Tag」按钮负责）。"""
-        try:
-            selected_actors = self._get_selected_actors_or_warn()
-            if not selected_actors:
-                return
-
-            layer_name = str(self.data.get_text("input_layer")).strip()
-            group_name = str(self.data.get_text("input_group")).strip()
-            if not layer_name and not group_name:
-                self.data.set_text("txt_status", "提示：请至少填写图层或分组名称。")
-                return
-
-            layer_applied = 0
-            group_applied = 0
-
-            for actor in selected_actors:
-                try:
-                    if layer_name and self._apply_layer_to_actor(actor, layer_name):
-                        layer_applied += 1
-
-                    if group_name and self._apply_group_to_actor(actor, group_name):
-                        group_applied += 1
-
-                except Exception as e:
-                    unreal.log_warning(f"SceneTools: 应用图层/分组失败 {actor.get_name()} - {str(e)}")
-
-            msg = f"应用完成：图层 {layer_applied}，分组 {group_applied}，对象 {len(selected_actors)}。"
-            self.data.set_text("txt_status", msg)
-            unreal.log(f"SceneTools: {msg}")
-        except Exception as e:
-            error_msg = f"应用图层/分组失败：{str(e)}"
-            unreal.log_error(f"SceneTools execute_apply_layer_group: {error_msg}")
-            self.data.set_text("txt_status", error_msg)
-
-    def execute_clear_group(self):
-        try:
-            selected_actors = self._get_selected_actors_or_warn()
-            if not selected_actors:
-                return
-
-            cleared = 0
-            for actor in selected_actors:
-                try:
-                    actor.set_folder_path("")
-                    cleared += 1
-                except Exception as e:
-                    unreal.log_warning(f"SceneTools: 清除分组失败 {actor.get_name()} - {str(e)}")
-
-            msg = f"已清除分组：{cleared} / {len(selected_actors)}"
-            self.data.set_text("txt_status", msg)
-            unreal.log(f"SceneTools: {msg}")
-        except Exception as e:
-            error_msg = f"清除分组失败：{str(e)}"
-            unreal.log_error(f"SceneTools execute_clear_group: {error_msg}")
             self.data.set_text("txt_status", error_msg)
 
     def execute_export_actor_tags(self):
@@ -2872,32 +2759,6 @@ class SceneToolsController:
                 return str(obj)
             except Exception:
                 return "<UnknownObject>"
-
-    def _apply_layer_to_actor(self, actor, layer_name):
-        # 优先尝试静态库 API
-        try:
-            unreal.LayersBlueprintLibrary.add_actor_to_layer(actor, layer_name)
-            return True
-        except Exception:
-            pass
-
-        # 回退到 LayersSubsystem
-        try:
-            layers_subsystem = unreal.get_editor_subsystem(unreal.LayersSubsystem)
-            layers_subsystem.add_actor_to_layer(actor, layer_name)
-            return True
-        except Exception:
-            unreal.log_warning(f"SceneTools: 图层接口不可用，跳过 {actor.get_name()} -> {layer_name}")
-            return False
-
-    def _apply_group_to_actor(self, actor, group_name):
-        # 以 Outliner 文件夹路径作为轻量分组方式
-        try:
-            actor.set_folder_path(group_name)
-            return True
-        except Exception:
-            unreal.log_warning(f"SceneTools: 分组接口不可用，跳过 {actor.get_name()} -> {group_name}")
-            return False
 
     def _resolve_current_level(self):
         try:
