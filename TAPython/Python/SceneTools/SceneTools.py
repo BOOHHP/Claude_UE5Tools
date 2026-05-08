@@ -53,6 +53,10 @@ class SceneToolsController:
         self._last_receives_decals_report = {}
         self._last_decal_to_plane_plan = []
         self._last_decal_to_plane_report = {}
+        self._last_invalid_actor_plan = []
+        self._last_invalid_actor_report = {}
+        self._invalid_actor_level_entries = []
+        self._invalid_actor_selected_level_indexes = []
         self._last_align_distribution_plan = []
         self._last_align_distribution_report = {}
         self._align_axis_updating = False
@@ -529,6 +533,208 @@ class SceneToolsController:
         except Exception as e:
             error_msg = f"贴花转平面执行失败：{str(e)}"
             unreal.log_error(f"SceneTools execute_decal_to_plane_batch: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    # ------------------------------------------------------------------
+    # Iteration 3：G-14 场景无效 Actor 清理
+    # ------------------------------------------------------------------
+
+    def preview_invalid_actor_cleanup(self):
+        try:
+            settings = self._read_invalid_actor_cleanup_settings()
+            scan_actors = self._get_invalid_actor_scan_actors_or_warn(settings)
+            if not scan_actors:
+                return
+
+            plan, summary = self._build_invalid_actor_cleanup_plan(scan_actors, settings)
+            self._last_invalid_actor_plan = plan
+            self.data.set_text("txt_invalid_actor_preview", self._format_invalid_actor_preview(plan, summary))
+
+            msg = (
+                f"无效 Actor 扫描完成（{summary['scope_label']}）：待标记 {summary['mark']}，已标记 {summary['already_marked']}，"
+                f"跳过 {summary['skip']}，错误 {summary['errors']}，共 {summary['total']}。"
+            )
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"无效 Actor 扫描失败：{str(e)}"
+            unreal.log_error(f"SceneTools preview_invalid_actor_cleanup: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def execute_mark_invalid_actors(self):
+        try:
+            settings = self._read_invalid_actor_cleanup_settings()
+            scan_actors = self._get_invalid_actor_scan_actors_or_warn(settings)
+            if not scan_actors:
+                return
+
+            plan, summary = self._build_invalid_actor_cleanup_plan(scan_actors, settings)
+            self._last_invalid_actor_plan = plan
+
+            report = self._execute_invalid_actor_mark_plan(plan, summary, settings)
+            self._last_invalid_actor_report = report
+
+            refreshed_plan, refreshed_summary = self._build_invalid_actor_cleanup_plan(scan_actors, settings)
+            self._last_invalid_actor_plan = refreshed_plan
+            preview_text = self._format_invalid_actor_preview(refreshed_plan, refreshed_summary)
+            self.data.set_text("txt_invalid_actor_preview", preview_text + "\n\n" + self._format_invalid_actor_report(report))
+
+            msg = (
+                f"无效 Actor 标记完成（{summary['scope_label']}）：标记 {report['marked']}，跳过 {report['skipped']}，"
+                f"失败 {report['failed']}，共 {report['total']}。"
+            )
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"无效 Actor 标记失败：{str(e)}"
+            unreal.log_error(f"SceneTools execute_mark_invalid_actors: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def execute_soft_delete_invalid_actors(self):
+        try:
+            settings = self._read_invalid_actor_cleanup_settings()
+            scan_actors = self._get_invalid_actor_scan_actors_or_warn(settings)
+            if not scan_actors:
+                return
+
+            plan, summary = self._build_invalid_actor_cleanup_plan(scan_actors, settings)
+            self._last_invalid_actor_plan = plan
+
+            report = self._execute_invalid_actor_soft_delete_plan(plan, summary, settings)
+            self._last_invalid_actor_report = report
+
+            refreshed_plan, refreshed_summary = self._build_invalid_actor_cleanup_plan(scan_actors, settings)
+            self._last_invalid_actor_plan = refreshed_plan
+            preview_text = self._format_invalid_actor_preview(refreshed_plan, refreshed_summary)
+            self.data.set_text("txt_invalid_actor_preview", preview_text + "\n\n" + self._format_invalid_actor_soft_delete_report(report))
+
+            msg = (
+                f"无效 Actor 软删除完成（{summary['scope_label']}）：处理 {report['soft_deleted']}，跳过 {report['skipped']}，"
+                f"失败 {report['failed']}，共 {report['total']}。"
+            )
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"无效 Actor 软删除失败：{str(e)}"
+            unreal.log_error(f"SceneTools execute_soft_delete_invalid_actors: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def select_last_invalid_actor_results(self):
+        try:
+            targets = [
+                item.get("actor") for item in self._last_invalid_actor_plan
+                if item.get("action") in ("mark", "already_marked") and item.get("actor") is not None
+            ]
+            if not targets:
+                msg = "没有可选中的无效 Actor 结果，请先执行预览扫描。"
+                self.data.set_text("txt_status", msg)
+                return
+
+            actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+            actor_subsystem.set_selected_level_actors(targets)
+            msg = f"已选中最近扫描结果中的 {len(targets)} 个无效 Actor。"
+            self.data.set_text("txt_status", msg)
+            unreal.log(f"SceneTools: {msg}")
+        except Exception as e:
+            error_msg = f"选中无效 Actor 结果失败：{str(e)}"
+            unreal.log_error(f"SceneTools select_last_invalid_actor_results: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def refresh_invalid_actor_level_list(self, show_status=True):
+        try:
+            old_selected_entries = self._get_selected_invalid_actor_level_entries(refresh_if_missing=False)
+            old_selected_keys = set()
+            for entry in old_selected_entries:
+                old_selected_keys.update(entry.get("keys", []))
+
+            entries = self._build_invalid_actor_level_entries()
+            self._invalid_actor_level_entries = entries
+            items = [entry["display"] for entry in entries]
+            self._set_list_view_items("list_invalid_actor_levels", items)
+
+            if not entries:
+                self._invalid_actor_selected_level_indexes = []
+                self._clear_invalid_actor_scan_results("当前世界没有可用的已加载关卡。")
+                if show_status:
+                    self.data.set_text("txt_status", "未找到已加载关卡。")
+                return
+
+            selected_indexes = self._resolve_invalid_actor_selected_level_indexes(old_selected_keys)
+            self._set_invalid_actor_selected_level_indexes(selected_indexes, update_selection=True)
+
+            info = self._format_invalid_actor_selected_levels_info()
+            self.data.set_text("txt_invalid_actor_level_info", info)
+            self._clear_invalid_actor_scan_results()
+            if show_status:
+                self.data.set_text("txt_status", f"已刷新关卡列表：{len(entries)} 个已加载关卡。{info}")
+        except Exception as e:
+            error_msg = f"刷新无效 Actor 关卡列表失败：{str(e)}"
+            unreal.log_error(f"SceneTools refresh_invalid_actor_level_list: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def on_invalid_actor_level_selection_changed(self, item=None, index=None):
+        try:
+            selected_indexes = self._get_list_view_selected_indexes("list_invalid_actor_levels")
+            if not selected_indexes:
+                fallback_index = self._get_single_list_view_selected_index("list_invalid_actor_levels", index)
+                if fallback_index >= 0:
+                    selected_indexes = [fallback_index]
+            selected_indexes = [i for i in selected_indexes if 0 <= i < len(self._invalid_actor_level_entries)]
+            if not selected_indexes:
+                # SListView 在按钮获得焦点时可能发出一次空选择事件；不要用它清空已有扫描关卡缓存。
+                return
+
+            self._set_invalid_actor_selected_level_indexes(selected_indexes, update_selection=False)
+            info = self._format_invalid_actor_selected_levels_info()
+            self.data.set_text("txt_invalid_actor_level_info", info)
+            self._clear_invalid_actor_scan_results()
+            self.data.set_text("txt_status", info)
+        except Exception as e:
+            error_msg = f"更新扫描关卡失败：{str(e)}"
+            unreal.log_error(f"SceneTools on_invalid_actor_level_selection_changed: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def on_invalid_actor_level_double_click(self, item=None, index=None):
+        try:
+            try:
+                selected_index = int(index)
+            except Exception:
+                selected_index = self._get_single_list_view_selected_index("list_invalid_actor_levels", None)
+            if selected_index < 0 or selected_index >= len(self._invalid_actor_level_entries):
+                return
+
+            selected_indexes = list(self._invalid_actor_selected_level_indexes)
+            if selected_index not in selected_indexes:
+                selected_indexes.append(selected_index)
+            self._set_invalid_actor_selected_level_indexes(selected_indexes, update_selection=True)
+            info = self._format_invalid_actor_selected_levels_info()
+            self.data.set_text("txt_invalid_actor_level_info", info)
+            self._clear_invalid_actor_scan_results()
+            self.data.set_text("txt_status", f"已激活扫描关卡：{self._invalid_actor_level_entries[selected_index]['name']}。{info}")
+        except Exception as e:
+            error_msg = f"双击激活扫描关卡失败：{str(e)}"
+            unreal.log_error(f"SceneTools on_invalid_actor_level_double_click: {error_msg}")
+            self.data.set_text("txt_status", error_msg)
+
+    def select_all_invalid_actor_levels(self):
+        try:
+            if not self._invalid_actor_level_entries:
+                self.refresh_invalid_actor_level_list(show_status=False)
+            if not self._invalid_actor_level_entries:
+                msg = "未找到可选择的已加载关卡。"
+                self.data.set_text("txt_status", msg)
+                self.data.set_text("txt_invalid_actor_level_info", msg)
+                return
+
+            selected_indexes = list(range(len(self._invalid_actor_level_entries)))
+            self._set_invalid_actor_selected_level_indexes(selected_indexes, update_selection=True)
+            info = self._format_invalid_actor_selected_levels_info()
+            self.data.set_text("txt_invalid_actor_level_info", info)
+            self._clear_invalid_actor_scan_results()
+            self.data.set_text("txt_status", f"已选择所有已加载关卡。{info}")
+        except Exception as e:
+            error_msg = f"选择所有扫描关卡失败：{str(e)}"
+            unreal.log_error(f"SceneTools select_all_invalid_actor_levels: {error_msg}")
             self.data.set_text("txt_status", error_msg)
 
     # ------------------------------------------------------------------
@@ -1818,6 +2024,690 @@ class SceneToolsController:
 
         return "\n".join(lines)
 
+    def _read_invalid_actor_cleanup_settings(self):
+        marker_tag = str(self.data.get_text("input_invalid_actor_marker_tag")).strip()
+        if not marker_tag:
+            marker_tag = "SceneTools_InvalidActor"
+        soft_delete_folder = str(self.data.get_text("input_invalid_actor_soft_delete_folder")).strip()
+        if not soft_delete_folder:
+            soft_delete_folder = "_SceneTools_InvalidActors"
+        target_level_entries = self._get_selected_invalid_actor_level_entries(refresh_if_missing=True)
+        return {
+            "marker_tag": marker_tag,
+            "soft_delete_folder": soft_delete_folder,
+            "target_level_entries": target_level_entries,
+            "scan_scope_label": self._format_invalid_actor_scan_scope_label(target_level_entries),
+            "check_empty_actor": self._get_checkbox_checked("chk_invalid_empty_actor"),
+            "check_missing_static_mesh": self._get_checkbox_checked("chk_invalid_missing_static_mesh"),
+        }
+
+    def _format_invalid_actor_scan_scope_label(self, target_level_entries):
+        if not target_level_entries:
+            return "未选择关卡"
+        names = [entry["name"] for entry in target_level_entries]
+        if len(names) <= 3:
+            return "关卡扫描: " + ", ".join(names)
+        return "关卡扫描: " + ", ".join(names[:3]) + f" ... +{len(names) - 3}"
+
+    def _get_invalid_actor_scan_actors_or_warn(self, settings):
+        target_level_entries = settings.get("target_level_entries") or []
+        if not target_level_entries:
+            msg = "提示：请先在关卡扫描列表中选择一个或多个关卡。"
+            self.data.set_text("txt_status", msg)
+            return []
+
+        actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        all_actors = list(actor_subsystem.get_all_level_actors())
+        target_keys = set()
+        target_names = []
+        for entry in target_level_entries:
+            target_keys.update(entry.get("keys", []))
+            target_names.append(entry.get("name", "<UnknownLevel>"))
+
+        matched_actors = [actor for actor in all_actors if self._actor_matches_level_keys(actor, target_keys)]
+        if not matched_actors:
+            msg = f"所选关卡中没有可扫描的 Actor：{', '.join(target_names[:5])}"
+            self.data.set_text("txt_status", msg)
+            unreal.log_warning(f"SceneTools: {msg}")
+        return matched_actors
+
+    def _actor_matches_level_keys(self, actor, target_keys):
+        if not target_keys:
+            return False
+        level = self._get_actor_level(actor)
+        actor_keys = set(self._get_level_identity_candidates(level))
+        return bool(actor_keys and target_keys and actor_keys.intersection(target_keys))
+
+    def _format_loaded_level_names(self, actors):
+        names = []
+        for actor in actors:
+            level = self._get_actor_level(actor)
+            candidates = self._get_level_name_candidates(level)
+            display_name = candidates[0] if candidates else "<UnknownLevel>"
+            if display_name not in names:
+                names.append(display_name)
+        if not names:
+            return "无"
+        return ", ".join(names[:20]) + (f" ... +{len(names) - 20}" if len(names) > 20 else "")
+
+    def _build_invalid_actor_level_entries(self):
+        levels_by_key = {}
+        actor_counts = {}
+
+        for level in self._get_loaded_editor_levels():
+            entry = self._make_invalid_actor_level_entry(level)
+            if entry is not None:
+                levels_by_key[entry["primary_key"]] = entry
+
+        actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        for actor in list(actor_subsystem.get_all_level_actors()):
+            level = self._get_actor_level(actor)
+            entry = self._make_invalid_actor_level_entry(level)
+            if entry is None:
+                continue
+            if entry["primary_key"] not in levels_by_key:
+                levels_by_key[entry["primary_key"]] = entry
+            actor_counts[entry["primary_key"]] = actor_counts.get(entry["primary_key"], 0) + 1
+
+        current_level = self._resolve_current_level()
+        current_keys = set(self._get_level_identity_candidates(current_level))
+        entries = list(levels_by_key.values())
+        for entry in entries:
+            entry["actor_count"] = actor_counts.get(entry["primary_key"], 0)
+            entry["is_current"] = bool(current_keys and current_keys.intersection(set(entry["keys"])))
+            prefix = "[Current] " if entry["is_current"] else ""
+            entry["display"] = f"{prefix}{entry['name']}  ({entry['actor_count']} Actors)"
+
+        entries.sort(key=lambda item: (not item.get("is_current", False), item["name"].lower()))
+        return entries
+
+    def _get_loaded_editor_levels(self):
+        levels = []
+        try:
+            world = unreal.EditorLevelLibrary.get_editor_world()
+            for level in list(unreal.EditorLevelUtils.get_levels(world)):
+                if level is not None and level not in levels:
+                    levels.append(level)
+        except Exception as e:
+            unreal.log_warning(f"SceneTools: EditorLevelUtils.get_levels 不可用，使用 Actor 关卡回退 - {str(e)}")
+
+        current_level = self._resolve_current_level()
+        if current_level is not None and current_level not in levels:
+            levels.append(current_level)
+        return levels
+
+    def _make_invalid_actor_level_entry(self, level):
+        if level is None:
+            return None
+        keys = self._get_level_identity_candidates(level)
+        if not keys:
+            return None
+        return {
+            "level": level,
+            "name": self._get_level_display_name(level),
+            "keys": keys,
+            "primary_key": keys[0],
+            "actor_count": 0,
+            "is_current": False,
+            "display": "",
+        }
+
+    def _get_level_display_name(self, level):
+        candidates = self._get_level_name_candidates(level)
+        if candidates:
+            return candidates[0]
+        return "<UnknownLevel>"
+
+    def _get_selected_invalid_actor_level_entries(self, refresh_if_missing=False):
+        self._sync_invalid_actor_selected_levels_from_view()
+        if refresh_if_missing and not self._invalid_actor_level_entries:
+            self.refresh_invalid_actor_level_list(show_status=False)
+        entries = []
+        for index in self._invalid_actor_selected_level_indexes:
+            if 0 <= index < len(self._invalid_actor_level_entries):
+                entries.append(self._invalid_actor_level_entries[index])
+        return entries
+
+    def _resolve_invalid_actor_selected_level_indexes(self, old_selected_keys):
+        selected_indexes = []
+        if old_selected_keys:
+            for index, entry in enumerate(self._invalid_actor_level_entries):
+                if old_selected_keys.intersection(set(entry.get("keys", []))):
+                    selected_indexes.append(index)
+            if selected_indexes:
+                return selected_indexes
+        for index, entry in enumerate(self._invalid_actor_level_entries):
+            if entry.get("is_current"):
+                return [index]
+        return [0] if self._invalid_actor_level_entries else []
+
+    def _set_invalid_actor_selected_level_indexes(self, indexes, update_selection):
+        unique_indexes = []
+        for index in indexes:
+            index = int(index)
+            if 0 <= index < len(self._invalid_actor_level_entries) and index not in unique_indexes:
+                unique_indexes.append(index)
+        self._invalid_actor_selected_level_indexes = unique_indexes
+        if update_selection:
+            self._set_list_view_selection("list_invalid_actor_levels", unique_indexes)
+
+    def _sync_invalid_actor_selected_levels_from_view(self):
+        selected_indexes = [
+            index for index in self._get_list_view_selected_indexes("list_invalid_actor_levels")
+            if 0 <= index < len(self._invalid_actor_level_entries)
+        ]
+        if selected_indexes:
+            self._invalid_actor_selected_level_indexes = selected_indexes
+
+    def _format_invalid_actor_selected_levels_info(self):
+        entries = self._get_selected_invalid_actor_level_entries(refresh_if_missing=False)
+        if not entries:
+            return "未选择扫描关卡。点击“刷新关卡列表”后选择一个或多个关卡。"
+        total_actors = sum(entry.get("actor_count", 0) for entry in entries)
+        names = [entry["name"] for entry in entries]
+        if len(names) <= 3:
+            level_text = ", ".join(names)
+        else:
+            level_text = ", ".join(names[:3]) + f" ... +{len(names) - 3}"
+        return f"已选择 {len(entries)} 个扫描关卡，Actor 数：{total_actors}。{level_text}"
+
+    def _clear_invalid_actor_scan_results(self, message=""):
+        self._last_invalid_actor_plan = []
+        self._last_invalid_actor_report = {}
+        if message:
+            self.data.set_text("txt_invalid_actor_preview", message)
+        else:
+            self.data.set_text("txt_invalid_actor_preview", "关卡选择已变化，请重新预览无效 Actor。")
+
+    def _get_level_identity_candidates(self, level):
+        if level is None:
+            return []
+        candidates = []
+        for getter_name in ("get_path_name", "get_name"):
+            try:
+                getter = getattr(level, getter_name)
+                value = getter()
+                if value:
+                    candidates.append(str(value))
+            except Exception:
+                pass
+        try:
+            value = str(level)
+            if value:
+                candidates.append(value)
+        except Exception:
+            pass
+        unique_candidates = []
+        for candidate in candidates:
+            if candidate and candidate not in unique_candidates:
+                unique_candidates.append(candidate)
+        return unique_candidates
+
+    def _get_level_name_candidates(self, level):
+        if level is None:
+            return []
+        candidates = []
+        for getter_name in ("get_name", "get_path_name"):
+            try:
+                getter = getattr(level, getter_name)
+                value = getter()
+                if value:
+                    candidates.append(str(value))
+            except Exception:
+                pass
+        try:
+            value = str(level)
+            if value:
+                candidates.append(value)
+        except Exception:
+            pass
+
+        unique_candidates = []
+        for candidate in candidates:
+            if candidate and candidate not in unique_candidates:
+                unique_candidates.append(candidate)
+        return unique_candidates
+
+    def _build_invalid_actor_cleanup_plan(self, actors, settings):
+        plan = []
+        for actor in actors:
+            item = {
+                "actor": actor,
+                "name": self._safe_actor_name(actor),
+                "action": "skip",
+                "reason": "未命中无效规则",
+                "details": [],
+                "errors": [],
+                "already_marked": False,
+            }
+            try:
+                reasons = self._detect_invalid_actor_reasons(actor, settings)
+                item["details"] = reasons
+                item["already_marked"] = self._actor_has_marker_tag(actor, settings["marker_tag"])
+                if reasons:
+                    if item["already_marked"]:
+                        item["action"] = "already_marked"
+                        item["reason"] = f"已存在标记 Tag: {settings['marker_tag']}"
+                    else:
+                        item["action"] = "mark"
+                        item["reason"] = "; ".join(reasons)
+            except Exception as e:
+                item["action"] = "error"
+                item["reason"] = str(e)
+                item["errors"].append(str(e))
+            plan.append(item)
+        summary = self._summarize_invalid_actor_cleanup_plan(plan)
+        summary["scope_label"] = settings.get("scan_scope_label", "关卡扫描")
+        summary["source_actor_count"] = len(actors)
+        return plan, summary
+
+    def _detect_invalid_actor_reasons(self, actor, settings):
+        reasons = []
+        if settings.get("check_missing_static_mesh"):
+            missing_mesh_reason = self._detect_missing_static_mesh_reason(actor)
+            if missing_mesh_reason:
+                reasons.append(missing_mesh_reason)
+        if settings.get("check_empty_actor"):
+            empty_reason = self._detect_empty_actor_reason(actor)
+            if empty_reason:
+                reasons.append(empty_reason)
+        return reasons
+
+    def _detect_missing_static_mesh_reason(self, actor):
+        try:
+            if isinstance(actor, unreal.StaticMeshActor):
+                component = self._get_static_mesh_component(actor)
+                mesh = self._get_static_mesh_from_component(component)
+                if mesh is None:
+                    return "StaticMeshActor 缺失 Static Mesh"
+        except Exception as e:
+            return f"StaticMeshActor 检测失败: {str(e)}"
+        return ""
+
+    def _detect_empty_actor_reason(self, actor):
+        try:
+            if self._is_actor_type_exempt_from_empty_check(actor):
+                return ""
+            components = self._get_actor_components_by_class(actor, unreal.ActorComponent)
+            if not components:
+                return "Actor 无组件"
+            if self._has_meaningful_actor_component(actor, components):
+                return ""
+            return "Actor 仅包含空 Scene 组件或无有效渲染/灯光/相机/贴花组件"
+        except Exception as e:
+            return f"空 Actor 检测失败: {str(e)}"
+
+    def _is_actor_type_exempt_from_empty_check(self, actor):
+        exempt_class_names = (
+            "WorldSettings",
+            "LevelScriptActor",
+            "DefaultPhysicsVolume",
+            "Brush",
+            "Volume",
+            "WorldDataLayers",
+            "DataLayer",
+            "DataLayerInstance",
+            "HLOD",
+            "LevelInstance",
+            "PackedLevelActor",
+            "Landscape",
+            "LandscapeStreamingProxy",
+            "FoliageActor",
+            "InstancedFoliageActor",
+            "LightmassImportanceVolume",
+            "LightmassCharacterIndirectDetailVolume",
+            "LightmassPortal",
+            "PostProcessVolume",
+            "SkyAtmosphere",
+            "ExponentialHeightFog",
+            "VolumetricCloud",
+            "ReflectionCapture",
+            "SphereReflectionCapture",
+            "BoxReflectionCapture",
+            "PlanarReflection",
+        )
+        try:
+            class_name = actor.get_class().get_name()
+        except Exception:
+            class_name = actor.__class__.__name__
+        return any(name in str(class_name) for name in exempt_class_names)
+
+    def _has_meaningful_actor_component(self, actor, components):
+        for component in components:
+            if component is None:
+                continue
+            if self._is_meaningful_component(component):
+                return True
+        try:
+            child_actors = actor.get_attached_actors()
+            if child_actors:
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _is_meaningful_component(self, component):
+        if isinstance(component, unreal.StaticMeshComponent):
+            return self._get_static_mesh_from_component(component) is not None
+        meaningful_classes = []
+        for class_name in (
+            "SkeletalMeshComponent",
+            "InstancedStaticMeshComponent",
+            "HierarchicalInstancedStaticMeshComponent",
+            "LightComponent",
+            "LocalLightComponent",
+            "DirectionalLightComponent",
+            "PointLightComponent",
+            "SpotLightComponent",
+            "RectLightComponent",
+            "SkyLightComponent",
+            "LightmassPortalComponent",
+            "CameraComponent",
+            "DecalComponent",
+            "SplineComponent",
+            "AudioComponent",
+            "NiagaraComponent",
+            "ParticleSystemComponent",
+            "PostProcessComponent",
+            "SkyAtmosphereComponent",
+            "ExponentialHeightFogComponent",
+            "VolumetricCloudComponent",
+            "ReflectionCaptureComponent",
+            "SphereReflectionCaptureComponent",
+            "BoxReflectionCaptureComponent",
+            "PlanarReflectionComponent",
+            "LandscapeComponent",
+            "LandscapeHeightfieldCollisionComponent",
+            "FoliageInstancedStaticMeshComponent",
+            "InstancedFoliageActorComponent",
+            "BrushComponent",
+            "BillboardComponent",
+            "MaterialBillboardComponent",
+            "TextRenderComponent",
+            "ArrowComponent",
+            "ChildActorComponent",
+        ):
+            component_class = getattr(unreal, class_name, None)
+            if component_class is not None:
+                meaningful_classes.append(component_class)
+        for component_class in meaningful_classes:
+            try:
+                if isinstance(component, component_class):
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def _get_static_mesh_from_component(self, component):
+        if component is None:
+            return None
+        try:
+            mesh_attr = component.static_mesh
+            if callable(mesh_attr):
+                return mesh_attr()
+            return mesh_attr
+        except Exception:
+            return self._safe_get_editor_property(component, "static_mesh")
+
+    def _summarize_invalid_actor_cleanup_plan(self, plan):
+        summary = {
+            "total": len(plan),
+            "mark": 0,
+            "already_marked": 0,
+            "skip": 0,
+            "errors": 0,
+        }
+        for item in plan:
+            action = item.get("action")
+            if action == "mark":
+                summary["mark"] += 1
+            elif action == "already_marked":
+                summary["already_marked"] += 1
+            elif action == "error":
+                summary["errors"] += 1
+            else:
+                summary["skip"] += 1
+        return summary
+
+    def _execute_invalid_actor_mark_plan(self, plan, summary, settings):
+        report = {
+            "total": summary["mark"],
+            "marked": 0,
+            "skipped": summary["skip"] + summary["already_marked"],
+            "failed": summary["errors"],
+            "snapshots": [],
+            "failures": [],
+            "marker_tag": settings["marker_tag"],
+        }
+        targets = [item for item in plan if item.get("action") == "mark"]
+        for item in plan:
+            if item.get("action") == "error":
+                report["failures"].append({"name": item["name"], "reason": item.get("reason", "未知错误")})
+        if not targets:
+            return report
+
+        changed_before = report["marked"]
+        try:
+            with unreal.ScopedEditorTransaction(f"SceneTools Mark Invalid Actors ({len(targets)} Actors)"):
+                for item in targets:
+                    self._apply_invalid_actor_marker(item, settings, report)
+        except Exception as e:
+            if report["marked"] == changed_before:
+                report["failed"] += len(targets)
+                report["failures"].append({
+                    "name": "ScopedEditorTransaction",
+                    "reason": f"事务创建失败，已取消执行以避免不可撤销修改：{str(e)}",
+                })
+            else:
+                report["failed"] += 1
+                report["failures"].append({"name": "ScopedEditorTransaction", "reason": str(e)})
+            unreal.log_warning(f"SceneTools: 无效 Actor 标记事务异常 - {str(e)}")
+        return report
+
+    def _execute_invalid_actor_soft_delete_plan(self, plan, summary, settings):
+        targets = [item for item in plan if item.get("action") in ("mark", "already_marked")]
+        report = {
+            "total": len(targets),
+            "soft_deleted": 0,
+            "skipped": summary["skip"],
+            "failed": summary["errors"],
+            "snapshots": [],
+            "failures": [],
+            "marker_tag": settings["marker_tag"],
+            "folder": settings["soft_delete_folder"],
+        }
+        for item in plan:
+            if item.get("action") == "error":
+                report["failures"].append({"name": item["name"], "reason": item.get("reason", "未知错误")})
+        if not targets:
+            return report
+
+        changed_before = report["soft_deleted"]
+        try:
+            with unreal.ScopedEditorTransaction(f"SceneTools Soft Delete Invalid Actors ({len(targets)} Actors)"):
+                for item in targets:
+                    self._apply_invalid_actor_soft_delete(item, settings, report)
+        except Exception as e:
+            if report["soft_deleted"] == changed_before:
+                report["failed"] += len(targets)
+                report["failures"].append({
+                    "name": "ScopedEditorTransaction",
+                    "reason": f"事务创建失败，已取消执行以避免不可撤销修改：{str(e)}",
+                })
+            else:
+                report["failed"] += 1
+                report["failures"].append({"name": "ScopedEditorTransaction", "reason": str(e)})
+            unreal.log_warning(f"SceneTools: 无效 Actor 软删除事务异常 - {str(e)}")
+        return report
+
+    def _apply_invalid_actor_marker(self, item, settings, report):
+        actor = item["actor"]
+        actor_name = item["name"]
+        marker_tag = settings["marker_tag"]
+        try:
+            if not self._mark_object_for_undo(actor, actor_name):
+                report["failed"] += 1
+                report["failures"].append({"name": actor_name, "reason": "modify() 失败，已跳过以避免不可撤销修改"})
+                return
+            old_tags = self._get_actor_tag_strings(actor)
+            if marker_tag in old_tags:
+                report["skipped"] += 1
+                return
+            new_tags = old_tags + [marker_tag]
+            tag_names = [unreal.Name(tag) for tag in new_tags]
+            try:
+                actor.tags = tag_names
+            except Exception:
+                actor.set_editor_property("tags", tag_names)
+            report["marked"] += 1
+            report["snapshots"].append({
+                "name": actor_name,
+                "tag": marker_tag,
+                "reason": item.get("reason", ""),
+                "old_tags": old_tags,
+                "new_tags": new_tags,
+            })
+        except Exception as e:
+            report["failed"] += 1
+            report["failures"].append({"name": actor_name, "reason": str(e)})
+            unreal.log_warning(f"SceneTools: 无效 Actor 标记失败 {actor_name} - {str(e)}")
+
+    def _apply_invalid_actor_soft_delete(self, item, settings, report):
+        actor = item["actor"]
+        actor_name = item["name"]
+        marker_tag = settings["marker_tag"]
+        folder_path = settings["soft_delete_folder"]
+        try:
+            if not self._mark_object_for_undo(actor, actor_name):
+                report["failed"] += 1
+                report["failures"].append({"name": actor_name, "reason": "modify() 失败，已跳过以避免不可撤销修改"})
+                return
+
+            old_tags = self._get_actor_tag_strings(actor)
+            old_folder = self._get_actor_folder_path(actor)
+            new_tags = list(old_tags)
+            if marker_tag not in new_tags:
+                new_tags.append(marker_tag)
+                tag_names = [unreal.Name(tag) for tag in new_tags]
+                try:
+                    actor.tags = tag_names
+                except Exception:
+                    actor.set_editor_property("tags", tag_names)
+
+            try:
+                actor.set_folder_path(unreal.Name(folder_path))
+            except Exception:
+                actor.set_folder_path(folder_path)
+
+            hidden = self._set_actor_editor_visibility(actor, False)
+            if not hidden:
+                raise RuntimeError("编辑器隐藏接口不可用")
+
+            report["soft_deleted"] += 1
+            report["snapshots"].append({
+                "name": actor_name,
+                "tag": marker_tag,
+                "folder": folder_path,
+                "old_folder": old_folder,
+                "reason": item.get("reason", "; ".join(item.get("details", []))),
+                "old_tags": old_tags,
+                "new_tags": new_tags,
+            })
+        except Exception as e:
+            report["failed"] += 1
+            report["failures"].append({"name": actor_name, "reason": str(e)})
+            unreal.log_warning(f"SceneTools: 无效 Actor 软删除失败 {actor_name} - {str(e)}")
+
+    def _actor_has_marker_tag(self, actor, marker_tag):
+        try:
+            return bool(actor.actor_has_tag(unreal.Name(marker_tag)))
+        except Exception:
+            return marker_tag in self._get_actor_tag_strings(actor)
+
+    def _get_actor_tag_strings(self, actor):
+        try:
+            tags = actor.tags()
+        except Exception:
+            tags = self._safe_get_editor_property(actor, "tags") or []
+        result = []
+        for tag in tags or []:
+            tag_text = str(tag)
+            if tag_text and tag_text not in result:
+                result.append(tag_text)
+        return result
+
+    def _get_actor_folder_path(self, actor):
+        try:
+            return str(actor.get_folder_path())
+        except Exception:
+            value = self._safe_get_editor_property(actor, "folder_path")
+            return str(value) if value is not None else ""
+
+    def _format_invalid_actor_preview(self, plan, summary):
+        lines = []
+        lines.append("=== Invalid Actor Cleanup Preview ===")
+        lines.append(f"Scope: {summary.get('scope_label', '关卡扫描')} | Source Actors: {summary.get('source_actor_count', summary['total'])}")
+        lines.append(
+            f"Mark: {summary['mark']} | Already Marked: {summary['already_marked']} | Skip: {summary['skip']} | Errors: {summary['errors']} | Total: {summary['total']}"
+        )
+        lines.append("")
+        max_rows = 140
+        for index, item in enumerate(plan[:max_rows], 1):
+            action = item.get("action", "skip")
+            if action == "mark":
+                lines.append(f"{index:03d}. [MARK] {item['name']}  {item['reason']}")
+            elif action == "already_marked":
+                detail_text = "; ".join(item.get("details", []))
+                lines.append(f"{index:03d}. [TAGGED] {item['name']}  {detail_text}")
+            elif action == "error":
+                lines.append(f"{index:03d}. [ERR] {item['name']}  {item.get('reason', '')}")
+            else:
+                lines.append(f"{index:03d}. [SKIP] {item['name']}  {item.get('reason', '')}")
+        if len(plan) > max_rows:
+            lines.append("")
+            lines.append(f"... {len(plan) - max_rows} more rows omitted")
+        return "\n".join(lines)
+
+    def _format_invalid_actor_report(self, report):
+        lines = []
+        lines.append("=== Last Invalid Actor Mark Execution ===")
+        lines.append(
+            f"Marked: {report['marked']} | Skipped: {report['skipped']} | Failed: {report['failed']} | Total Targets: {report['total']} | Tag: {report['marker_tag']}"
+        )
+        lines.append("")
+        max_rows = 100
+        for index, snapshot in enumerate(report["snapshots"][:max_rows], 1):
+            lines.append(f"{index:03d}. [TAG] {snapshot['name']}  +{snapshot['tag']}  reason={snapshot['reason']}")
+        if len(report["snapshots"]) > max_rows:
+            lines.append(f"... {len(report['snapshots']) - max_rows} more tagged rows omitted")
+        if report["failures"]:
+            lines.append("")
+            lines.append("Failures:")
+            for failure in report["failures"][:30]:
+                lines.append(f"- {failure['name']}: {failure['reason']}")
+        return "\n".join(lines)
+
+    def _format_invalid_actor_soft_delete_report(self, report):
+        lines = []
+        lines.append("=== Last Invalid Actor Soft Delete Execution ===")
+        lines.append(
+            f"Soft Deleted: {report['soft_deleted']} | Skipped: {report['skipped']} | Failed: {report['failed']} | Total Targets: {report['total']} | Folder: {report['folder']} | Tag: {report['marker_tag']}"
+        )
+        lines.append("")
+        max_rows = 100
+        for index, snapshot in enumerate(report["snapshots"][:max_rows], 1):
+            lines.append(
+                f"{index:03d}. [SOFT_DELETE] {snapshot['name']}  folder={snapshot['folder']}  +{snapshot['tag']}  reason={snapshot['reason']}"
+            )
+        if len(report["snapshots"]) > max_rows:
+            lines.append(f"... {len(report['snapshots']) - max_rows} more soft deleted rows omitted")
+        if report["failures"]:
+            lines.append("")
+            lines.append("Failures:")
+            for failure in report["failures"][:30]:
+                lines.append(f"- {failure['name']}: {failure['reason']}")
+        return "\n".join(lines)
+
     def _read_decal_to_plane_settings(self):
         suffix = str(self.data.get_text("input_decal_plane_suffix")).strip()
         if not suffix:
@@ -2147,7 +3037,10 @@ class SceneToolsController:
     def _get_static_mesh_component(self, actor):
         try:
             if isinstance(actor, unreal.StaticMeshActor):
-                return actor.static_mesh_component()
+                component_attr = actor.static_mesh_component
+                if callable(component_attr):
+                    return component_attr()
+                return component_attr
         except Exception:
             pass
         components = self._get_actor_components_by_class(actor, unreal.StaticMeshComponent)
@@ -2831,6 +3724,58 @@ class SceneToolsController:
                 return state.lower() in ("checked", "true", "1")
             return bool(state)
         except Exception:
+            return False
+
+    def _set_list_view_items(self, aka, items):
+        for method_name in ("set_list_view_items", "set_list_items"):
+            fn = getattr(self.data, method_name, None)
+            if fn is None:
+                continue
+            try:
+                fn(aka, list(items))
+                return True
+            except Exception as e:
+                unreal.log_warning(f"SceneTools _set_list_view_items {method_name}: {str(e)}")
+        return False
+
+    def _get_list_view_selected_indexes(self, aka):
+        fn = getattr(self.data, "get_list_view_items", None)
+        if fn is None:
+            return []
+        try:
+            ret = fn(aka)
+            if isinstance(ret, tuple) and len(ret) >= 2 and ret[1] is not None:
+                indexes = []
+                for index in ret[1]:
+                    try:
+                        indexes.append(int(index))
+                    except Exception:
+                        continue
+                return indexes
+        except Exception as e:
+            unreal.log_warning(f"SceneTools _get_list_view_selected_indexes: {str(e)}")
+        return []
+
+    def _get_single_list_view_selected_index(self, aka, fallback_index=None):
+        indexes = self._get_list_view_selected_indexes(aka)
+        if indexes:
+            return indexes[0]
+        try:
+            if fallback_index is not None:
+                return int(fallback_index)
+        except Exception:
+            pass
+        return -1
+
+    def _set_list_view_selection(self, aka, indexes):
+        fn = getattr(self.data, "set_list_view_selections", None)
+        if fn is None:
+            return False
+        try:
+            fn(aka, list(indexes))
+            return True
+        except Exception as e:
+            unreal.log_warning(f"SceneTools _set_list_view_selection: {str(e)}")
             return False
 
     def _coerce_checkbox_value(self, value):

@@ -33,7 +33,7 @@
                                                     "AutoHeight": true,
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
-                                                        "Text": "按范围和物件类型批量选择场景中的 Actor。选择后可进行可见性控制。",
+                                                        "Text": "按范围和物件类型批量选择场景中的 Actor，便于配合下方批处理工具继续操作。",
                                                         "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true
@@ -307,6 +307,263 @@
                                     "HeaderPadding": 3,
                                     "HeaderContent": {
                                         "STextBlock": {
+                                            "Text": "无效 Actor 清理",
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
+                                        }
+                                    },
+                                    "BodyContent": {
+                                        "SVerticalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 4, 8, 8],
+                                                    "STextBlock": {
+                                                        "Text": "从关卡扫描列表中选择一个或多个已加载关卡，扫描其中的空节点与缺失 Static Mesh 对象；可先追加标记 Tag，再按需移动到软删除文件夹并在编辑器中隐藏。",
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                                        "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                        "AutoWrapText": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [8, 0, 8, 8],
+                                                    "SVerticalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SVerticalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "AutoHeight": true,
+                                                                            "Padding": [0, 0, 0, 6],
+                                                                            "SHorizontalBox": {
+                                                                                "Slots": [
+                                                                                    {
+                                                                                        "FillWidth": 1.0,
+                                                                                        "VAlign": "VAlign_Center",
+                                                                                        "STextBlock": {
+                                                                                            "Aka": "txt_invalid_actor_level_info",
+                                                                                            "Text": "关卡扫描：点击刷新后选择一个或多个已加载关卡。",
+                                                                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                                                                            "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                                                            "AutoWrapText": true
+                                                                                        }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoWidth": true,
+                                                                                        "Padding": [8, 0, 0, 0],
+                                                                                        "SButton": {
+                                                                                            "Aka": "btn_invalid_actor_refresh_levels",
+                                                                                            "HAlign": "HAlign_Center",
+                                                                                            "ContentPadding": [12, 4],
+                                                                                            "Text": "刷新关卡列表",
+                                                                                            "OnClick": "SceneTools.instance.refresh_invalid_actor_level_list()"
+                                                                                        }
+                                                                                    },
+                                                                                    {
+                                                                                        "AutoWidth": true,
+                                                                                        "Padding": [6, 0, 0, 0],
+                                                                                        "SButton": {
+                                                                                            "Aka": "btn_invalid_actor_select_all_levels",
+                                                                                            "HAlign": "HAlign_Center",
+                                                                                            "ContentPadding": [12, 4],
+                                                                                            "Text": "选择所有关卡",
+                                                                                            "OnClick": "SceneTools.instance.select_all_invalid_actor_levels()"
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "AutoHeight": true,
+                                                                            "SBox": {
+                                                                                "MaxDesiredHeight": 120,
+                                                                                "MinDesiredHeight": 72,
+                                                                                "Content": {
+                                                                                    "SListView": {
+                                                                                        "Aka": "list_invalid_actor_levels",
+                                                                                        "ItemHeight": 18,
+                                                                                        "ListItemsSource": [],
+                                                                                        "SHeaderRow": {
+                                                                                            "Columns": [
+                                                                                                {
+                                                                                                    "DefaultLabel": "关卡扫描列表（Ctrl/Shift 多选，双击激活）",
+                                                                                                    "FillWidth": 1
+                                                                                                }
+                                                                                            ]
+                                                                                        },
+                                                                                        "SelectionMode": "Multi",
+                                                                                        "OnSelectionChanged": "SceneTools.instance.on_invalid_actor_level_selection_changed(%item, %index)",
+                                                                                        "OnMouseButtonDoubleClick": "SceneTools.instance.on_invalid_actor_level_double_click(%item, %index)"
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SCheckBox": {
+                                                                                "Aka": "chk_invalid_empty_actor",
+                                                                                "IsChecked": true,
+                                                                                "Content": { "STextBlock": { "Text": "  空 Actor" } }
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SCheckBox": {
+                                                                                "Aka": "chk_invalid_missing_static_mesh",
+                                                                                "IsChecked": true,
+                                                                                "Content": { "STextBlock": { "Text": "  缺失 Static Mesh" } }
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "VAlign": "VAlign_Center",
+                                                                            "Padding": [0, 0, 8, 0],
+                                                                            "STextBlock": { "Text": "标记 Tag" }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "input_invalid_actor_marker_tag",
+                                                                                "Text": "SceneTools_InvalidActor"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "AutoWidth": true,
+                                                                            "VAlign": "VAlign_Center",
+                                                                            "Padding": [0, 0, 8, 0],
+                                                                            "STextBlock": { "Text": "软删除文件夹" }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SEditableTextBox": {
+                                                                                "Aka": "input_invalid_actor_soft_delete_folder",
+                                                                                "Text": "_SceneTools_InvalidActors"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SButton": {
+                                                                                "Aka": "btn_invalid_actor_preview",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "预览无效 Actor",
+                                                                                "OnClick": "SceneTools.instance.preview_invalid_actor_cleanup()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SButton": {
+                                                                                "Aka": "btn_invalid_actor_select_results",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "选中扫描结果",
+                                                                                "OnClick": "SceneTools.instance.select_last_invalid_actor_results()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "Padding": [0, 0, 0, 8],
+                                                                "SHorizontalBox": {
+                                                                    "Slots": [
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "Padding": [0, 0, 6, 0],
+                                                                            "SButton": {
+                                                                                "Aka": "btn_invalid_actor_mark",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "仅标记 Tag",
+                                                                                "OnClick": "SceneTools.instance.execute_mark_invalid_actors()"
+                                                                            }
+                                                                        },
+                                                                        {
+                                                                            "FillWidth": 1.0,
+                                                                            "SButton": {
+                                                                                "Aka": "btn_invalid_actor_soft_delete",
+                                                                                "HAlign": "HAlign_Center",
+                                                                                "ContentPadding": [20, 6],
+                                                                                "Text": "软删除无效 Actor",
+                                                                                "OnClick": "SceneTools.instance.execute_soft_delete_invalid_actors()"
+                                                                            }
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoHeight": true,
+                                                                "SBorder": {
+                                                                    "Padding": 8,
+                                                                    "BorderImage": {
+                                                                        "Style": "FCoreStyle",
+                                                                        "Brush": "ToolPanel.GroupBorder"
+                                                                    },
+                                                                    "Content": {
+                                                                        "SMultiLineEditableTextBox": {
+                                                                            "Aka": "txt_invalid_actor_preview",
+                                                                            "Text": "无效 Actor 扫描结果将显示在此处。",
+                                                                            "IsReadOnly": true,
+                                                                            "AutoWrapText": false
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "SExpandableArea": {
+                                    "InitiallyCollapsed": true,
+                                    "OnAreaExpansionChanged": "SceneTools.instance.on_panel_expansion_changed(%)",
+                                    "HeaderPadding": 3,
+                                    "HeaderContent": {
+                                        "STextBlock": {
                                             "Text": "贴花转平面",
                                             "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
                                         }
@@ -318,7 +575,7 @@
                                                     "AutoHeight": true,
                                                     "Padding": [8, 4, 8, 8],
                                                     "STextBlock": {
-                                                        "Text": "将已选 DecalActor 批量生成 Plane StaticMeshActor，按 Decal Size 估算平面缩放并复制贴花材质。",
+                                                        "Text": "将已选 DecalActor 批量生成 Plane StaticMeshActor，按组件世界尺寸匹配平面比例并赋予源贴花材质。",
                                                         "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
                                                         "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
                                                         "AutoWrapText": true

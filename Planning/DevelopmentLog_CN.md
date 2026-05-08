@@ -1,5 +1,40 @@
 # TA 工具开发日志
 
+## 2026-05-08 - SceneTools Iteration 3：G-14 场景无效 Actor 清理 v1-v3
+
+- 模块：`TAPython/Python/SceneTools/`
+- 范围：按 Iteration 3 继续开发 `G-14 场景无效 Actor 清理工具` 的首个安全版本。
+- UI：SceneTools 新增“无效 Actor 清理”折叠面板，提供“空 Actor”“缺失 Static Mesh”两类检测开关、标记 Tag 输入框、预览按钮和“仅标记 Tag”执行按钮。
+- 逻辑：新增 `preview_invalid_actor_cleanup()` / `execute_mark_invalid_actors()`，v1 仅扫描已选 Actor，不做全关卡扫描，避免误伤范围过大。
+- 检测规则：识别缺失 Static Mesh 的 `StaticMeshActor`，以及仅包含空 Scene 组件、无有效渲染/灯光/相机/贴花组件的空 Actor；WorldSettings、LevelScriptActor、Volume/Brush 等基础类型跳过空 Actor 判断。
+- 执行策略：执行路径使用 `ScopedEditorTransaction`，写入前对目标 Actor 调用 `modify()`，仅追加默认 `SceneTools_InvalidActor` Tag，不隐藏、不删除 Actor。
+- 报告：预览输出 `[MARK] / [TAGGED] / [SKIP] / [ERR]`，执行报告记录被追加的 Tag、原因和失败清单。
+- 验证：`SceneTools.py` 通过 `py_compile`；`SceneTools.json` 通过 JSON 解析；VS Code Problems 未发现错误。
+- UE 反馈修正 1：点击“预览无效 Actor”时，`StaticMeshActor.static_mesh_component` 在当前 UE Python 绑定中返回组件属性而非可调用方法，导致 `'StaticMeshComponent' object is not callable`；已将 StaticMeshActor 组件与 StaticMesh 读取都改为兼容“属性/方法”两种形式，避免误报为检测失败。
+- v2 补充：新增“软删除文件夹”输入框与“软删除无效 Actor”按钮；软删除会复用当前扫描规则，对命中对象追加标记 Tag、移动到默认 `_SceneTools_InvalidActors` 文件夹，并在编辑器中隐藏 Actor，全程使用事务撤销，不执行硬删除。
+- UE 验证结果：用户确认 v2 预览、标记、软删除功能测试正常。
+- v3 补充：新增“选中扫描结果”按钮，可一键选中最近扫描中 `[MARK] / [TAGGED]` 的无效 Actor；关卡选择变化时会清空旧扫描结果，避免选中到过期对象。
+- v3 交互修正：取消“已选 Actor / 指定关卡 / 全部已加载关卡”三选一范围；当前统一通过 `EditorLevelUtils.get_levels(world)` 读取 UE 已加载关卡，并在 Chameleon `SListView` 中以虚拟映射呈现。用户可在关卡扫描列表中单选或多选关卡，所选关卡即为本次扫描对象。
+- v3 交互修正 2：修复点击功能按钮时 SListView 失焦触发空选择事件导致扫描关卡缓存被清空的问题；新增双击关卡行激活扫描关卡，新增“选择所有关卡”按钮用于快速扫描全部已加载关卡。
+- v3 检测修正：扩大空 Actor 判定的官方场景系统豁免与有意义组件白名单，覆盖 Light/SkyAtmosphere/ExponentialHeightFog/VolumetricCloud/ReflectionCapture/PostProcess/Landscape/Billboard/TextRender 等常见场景美术对象，避免官方光照、天空、雾效、反射和后期对象被误报为空 Actor。
+- UE 验证结果：用户确认关卡列表选择、单选/多选/双击/全选扫描、扫描结果选中，以及官方光照/环境对象误报修正均测试正确。
+- 下一步：G-14 v1-v3 当前可作为安全清理基线；后续再评估是否加入硬删除确认流程、更多检测规则或扫描结果明细面板。
+
+---
+
+## 2026-05-08 - SceneTools：移除重叠面板与收束下一步方向
+
+- 模块：`TAPython/Python/SceneTools/`
+- 范围：根据 UE 实测后的工具整理，删除 SceneTools 内与现有能力重叠或暂不继续推进的入口。
+- UI 精简：移除“隐藏工具”折叠面板；该能力已被 G-11“渲染属性”工具覆盖，后续统一通过渲染属性入口处理 Actor/Component 可见性与隐藏状态。
+- UI 精简：移除“图层 / 分组”折叠面板；Tag 批量能力已交由 BatchTagTool，图层/Outliner 分组暂不作为 SceneTools 近期重点。
+- 代码清理：移除 `execute_hide()` / `execute_show()`、`execute_apply_layer_group()` / `execute_clear_group()`，以及图层/分组专用辅助函数；保留 `_set_actor_editor_visibility()` 供“贴花转平面”的“生成后隐藏源贴花”选项复用。
+- 验证：`SceneTools.py` 通过 `py_compile`；`SceneTools.json` 通过 JSON 解析；VS Code Problems 未发现错误。
+- 提交：`6b254ca` 已推送远端。
+- 下一步建议：继续 Iteration 3 的 `G-14 场景无效 Actor 清理工具`，先做预览扫描与仅标记模式，避免直接删除带来的误操作风险。
+
+---
+
 ## 2026-05-07 - SceneTools Iteration 3：11 贴花转平面模型 v1
 
 - 模块：`TAPython/Python/SceneTools/`
