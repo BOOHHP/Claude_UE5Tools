@@ -709,17 +709,12 @@ class SceneToolsController:
             summary = self._summarize_invalid_actor_cleanup_plan(self._last_invalid_actor_plan)
             summary["scope_label"] = self._infer_last_invalid_actor_scope_label()
             summary["source_actor_count"] = len(self._last_invalid_actor_plan)
-            report_text = self._format_invalid_actor_preview(self._last_invalid_actor_plan, summary)
+            batch_report = self._build_invalid_actor_batch_report(self._last_invalid_actor_plan, summary)
+            report_text = self._format_batch_report_text(batch_report, max_rows=500)
             if self._last_invalid_actor_report:
                 report_text += "\n\n" + self._format_invalid_actor_execution_report_for_export(self._last_invalid_actor_report)
 
-            export_dir = self._get_scene_tools_export_dir()
-            if not os.path.isdir(export_dir):
-                os.makedirs(export_dir)
-            file_name = f"InvalidActorReport_{time.strftime('%Y%m%d_%H%M%S')}.txt"
-            file_path = os.path.join(export_dir, file_name)
-            with open(file_path, "w", encoding="utf-8") as report_file:
-                report_file.write(report_text)
+            file_path = self._export_batch_report_text("InvalidActorReport", report_text)
 
             msg = f"无效 Actor 报告已导出：{file_path}"
             self.data.set_text("txt_status", msg)
@@ -728,6 +723,108 @@ class SceneToolsController:
             error_msg = f"导出无效 Actor 报告失败：{str(e)}"
             unreal.log_error(f"SceneTools export_invalid_actor_report: {error_msg}")
             self.data.set_text("txt_status", error_msg)
+
+    # ------------------------------------------------------------------
+    # 通用批处理报告底座 v1
+    # ------------------------------------------------------------------
+
+    def _make_batch_report(self, title, scope="", total=0, counters=None):
+        return {
+            "title": title,
+            "scope": scope,
+            "total": int(total or 0),
+            "counters": dict(counters or {}),
+            "rows": [],
+            "snapshots": [],
+            "failures": [],
+            "warnings": [],
+            "export_path": "",
+        }
+
+    def _add_batch_report_row(self, report, status, name, reason="", details=None, actor=None):
+        row = {
+            "status": str(status or "INFO"),
+            "name": str(name or "<Unknown>"),
+            "reason": str(reason or ""),
+            "details": list(details or []),
+            "actor": actor,
+        }
+        report.setdefault("rows", []).append(row)
+        return row
+
+    def _format_batch_report_text(self, report, max_rows=300):
+        lines = []
+        title = report.get("title", "Batch Report")
+        lines.append(f"=== {title} ===")
+        scope = report.get("scope", "")
+        if scope:
+            lines.append(f"Scope: {scope}")
+        lines.append(f"Total: {report.get('total', 0)}")
+
+        counter_text = self._format_batch_report_counters(report.get("counters", {}))
+        if counter_text:
+            lines.append(counter_text)
+        lines.append("")
+
+        rows = list(report.get("rows", []))
+        for index, row in enumerate(rows[:max_rows], 1):
+            status = row.get("status", "INFO")
+            name = row.get("name", "<Unknown>")
+            reason = row.get("reason", "")
+            lines.append(f"{index:03d}. [{status}] {name}  {reason}")
+            details = row.get("details") or []
+            for detail in details[:5]:
+                lines.append(f"      - {detail}")
+        if len(rows) > max_rows:
+            lines.append("")
+            lines.append(f"... {len(rows) - max_rows} more rows omitted")
+
+        warnings = report.get("warnings") or []
+        if warnings:
+            lines.append("")
+            lines.append("Warnings:")
+            for warning in warnings[:50]:
+                lines.append(f"- {warning}")
+
+        failures = report.get("failures") or []
+        if failures:
+            lines.append("")
+            lines.append("Failures:")
+            for failure in failures[:50]:
+                name = failure.get("name", "<Unknown>") if isinstance(failure, dict) else "<Unknown>"
+                reason = failure.get("reason", str(failure)) if isinstance(failure, dict) else str(failure)
+                lines.append(f"- {name}: {reason}")
+
+        export_path = report.get("export_path", "")
+        if export_path:
+            lines.append("")
+            lines.append(f"Export Path: {export_path}")
+        return "\n".join(lines)
+
+    def _format_batch_report_counters(self, counters):
+        parts = []
+        for key, value in counters.items():
+            parts.append(f"{key}: {value}")
+        return " | ".join(parts)
+
+    def _export_batch_report_text(self, file_prefix, report_text):
+        export_dir = self._get_scene_tools_export_dir()
+        if not os.path.isdir(export_dir):
+            os.makedirs(export_dir)
+        safe_prefix = self._sanitize_export_file_prefix(file_prefix)
+        file_name = f"{safe_prefix}_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+        file_path = os.path.join(export_dir, file_name)
+        with open(file_path, "w", encoding="utf-8") as report_file:
+            report_file.write(report_text)
+        return file_path
+
+    def _sanitize_export_file_prefix(self, file_prefix):
+        text = str(file_prefix or "SceneToolsReport").strip()
+        safe_chars = []
+        for char in text:
+            if char.isalnum() or char in ("_", "-"):
+                safe_chars.append(char)
+        return "".join(safe_chars) or "SceneToolsReport"
 
     def refresh_invalid_actor_level_list(self, show_status=True):
         try:
@@ -2357,6 +2454,48 @@ class SceneToolsController:
             f"明细结果：可定位 {selectable_count}，错误 {error_count}，"
             f"跳过 {summary.get('skip', 0)}，扫描 {summary.get('total', 0)}。"
         )
+
+    def _build_invalid_actor_batch_report(self, plan, summary):
+        counters = {
+            "Source Actors": summary.get("source_actor_count", summary.get("total", 0)),
+            "Mark": summary.get("mark", 0),
+            "Already Marked": summary.get("already_marked", 0),
+            "Skip": summary.get("skip", 0),
+            "Errors": summary.get("errors", 0),
+        }
+        report = self._make_batch_report(
+            "Invalid Actor Cleanup Preview",
+            scope=summary.get("scope_label", "关卡扫描"),
+            total=summary.get("total", len(plan)),
+            counters=counters,
+        )
+        for item in plan:
+            action = item.get("action", "skip")
+            if action == "mark":
+                status = "MARK"
+                reason = item.get("reason", "")
+            elif action == "already_marked":
+                status = "TAGGED"
+                reason = item.get("reason", "")
+            elif action == "error":
+                status = "ERR"
+                reason = item.get("reason", "")
+                report.setdefault("failures", []).append({
+                    "name": item.get("name", "<UnknownActor>"),
+                    "reason": reason,
+                })
+            else:
+                status = "SKIP"
+                reason = item.get("reason", "")
+            self._add_batch_report_row(
+                report,
+                status,
+                item.get("name", "<UnknownActor>"),
+                reason=reason,
+                details=item.get("details", []),
+                actor=item.get("actor"),
+            )
+        return report
 
     def _set_invalid_actor_result_info(self, text):
         try:

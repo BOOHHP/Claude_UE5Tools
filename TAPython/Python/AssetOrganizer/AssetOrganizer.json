@@ -1,0 +1,298 @@
+{
+    "TabLabel": "资产整理工具集",
+    "InitTabSize": [520, 620],
+    "InitPyCmd": "import importlib; from AssetOrganizer import AssetOrganizer; getattr(AssetOrganizer, 'on_close', lambda: None)(); importlib.reload(AssetOrganizer); AssetOrganizer.instance = AssetOrganizer.AssetOrganizerController(%JsonPath)",
+    "OnClosePyCmd": "from AssetOrganizer import AssetOrganizer; getattr(AssetOrganizer, 'on_close', lambda: None)()",
+
+    "Root": {
+        "SScrollBox": {
+            "Aka": "asset_organizer_scroll",
+            "Slots": [
+                {
+                    "AutoHeight": true,
+                    "Padding": [8, 8, 8, 6],
+                    "SExpandableArea": {
+                        "InitiallyCollapsed": false,
+                        "HeaderPadding": 3,
+                        "HeaderContent": {
+                            "STextBlock": {
+                                "Text": "非 POT 纹理",
+                                "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 }
+                            }
+                        },
+                        "BodyContent": {
+                            "SVerticalBox": {
+                                "Slots": [
+                                    {
+                                        "AutoHeight": true,
+                                        "Padding": [8, 4, 8, 8],
+                                        "STextBlock": {
+                                            "Text": "扫描 Texture2D 中宽高不是 2 的幂的纹理。v1 只设置 Power Of Two Mode 为 Stretch To Power Of Two，不重采样源图像。",
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                            "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                            "AutoWrapText": true
+                                        }
+                                    },
+                                    {
+                                        "AutoHeight": true,
+                                        "Padding": [8, 0, 8, 8],
+                                        "SVerticalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 6],
+                                                    "STextBlock": {
+                                                        "Text": "扫描目录列表",
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 },
+                                                        "ColorAndOpacity": [0.86, 0.86, 0.86, 1.0]
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 6],
+                                                    "STextBlock": {
+                                                        "Aka": "txt_non_pot_texture_path_info",
+                                                        "Text": "当前扫描目录：1 个",
+                                                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                                        "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                        "AutoWrapText": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 8],
+                                                    "SBox": {
+                                                        "MinDesiredHeight": 90,
+                                                        "MaxDesiredHeight": 180,
+                                                        "Content": {
+                                                            "SDetailsView": {
+                                                                "Aka": "details_non_pot_texture_paths",
+                                                                "AllowSearch": false,
+                                                                "NameAreaSettings": "HideNameArea",
+                                                                "ShowScrollBar": true
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 6],
+                                                    "SEditableTextBox": {
+                                                        "Aka": "input_non_pot_texture_path",
+                                                        "Text": "/Game",
+                                                        "IsReadOnly": true
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 8],
+                                                    "SHorizontalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "Padding": [0, 0, 6, 0],
+                                                                "SButton": {
+                                                                    "Aka": "btn_non_pot_texture_add_cb_path",
+                                                                    "HAlign": "HAlign_Center",
+                                                                    "ContentPadding": [12, 4],
+                                                                    "Text": "添加内容浏览器选择",
+                                                                    "OnClick": "AssetOrganizer.instance.add_content_browser_non_pot_texture_paths()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "Padding": [0, 0, 6, 0],
+                                                                "SButton": {
+                                                                    "Aka": "btn_non_pot_texture_apply_paths",
+                                                                    "HAlign": "HAlign_Center",
+                                                                    "ContentPadding": [12, 4],
+                                                                    "Text": "应用路径列表",
+                                                                    "OnClick": "AssetOrganizer.instance.apply_non_pot_texture_path_list()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "Padding": [0, 0, 6, 0],
+                                                                "SButton": {
+                                                                    "Aka": "btn_non_pot_texture_reset_paths",
+                                                                    "HAlign": "HAlign_Center",
+                                                                    "ContentPadding": [12, 4],
+                                                                    "Text": "重置 /Game",
+                                                                    "OnClick": "AssetOrganizer.instance.reset_non_pot_texture_path_list()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "SButton": {
+                                                                    "Aka": "btn_non_pot_texture_focus_path",
+                                                                    "HAlign": "HAlign_Center",
+                                                                    "ContentPadding": [12, 4],
+                                                                    "Text": "定位首个目录",
+                                                                    "OnClick": "AssetOrganizer.instance.focus_non_pot_texture_scan_path_in_content_browser()"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 8],
+                                                    "SHorizontalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "Padding": [0, 0, 6, 0],
+                                                                "SCheckBox": {
+                                                                    "Aka": "chk_non_pot_texture_recursive",
+                                                                    "IsChecked": true,
+                                                                    "Content": { "STextBlock": { "Text": "  递归子目录" } }
+                                                                }
+                                                            },
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "SCheckBox": {
+                                                                    "Aka": "chk_non_pot_texture_save",
+                                                                    "IsChecked": true,
+                                                                    "Content": { "STextBlock": { "Text": "  修复后保存资产" } }
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 8],
+                                                    "SHorizontalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "Padding": [0, 0, 6, 0],
+                                                                "SButton": {
+                                                                    "Aka": "btn_non_pot_texture_preview",
+                                                                    "HAlign": "HAlign_Center",
+                                                                    "ContentPadding": [20, 6],
+                                                                    "Text": "预览非 POT 纹理",
+                                                                    "OnClick": "AssetOrganizer.instance.preview_non_pot_textures()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "SButton": {
+                                                                    "Aka": "btn_non_pot_texture_fix",
+                                                                    "HAlign": "HAlign_Center",
+                                                                    "ContentPadding": [20, 6],
+                                                                    "Text": "修复非 POT 纹理",
+                                                                    "OnClick": "AssetOrganizer.instance.execute_fix_non_pot_textures()"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 6],
+                                                    "SHorizontalBox": {
+                                                        "Slots": [
+                                                            {
+                                                                "FillWidth": 1.0,
+                                                                "VAlign": "VAlign_Center",
+                                                                "STextBlock": {
+                                                                    "Aka": "txt_non_pot_texture_result_info",
+                                                                    "Text": "无扫描结果。",
+                                                                    "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                                                    "ColorAndOpacity": [0.7, 0.7, 0.7, 1.0],
+                                                                    "AutoWrapText": true
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "Padding": [8, 0, 0, 0],
+                                                                "SButton": {
+                                                                    "Aka": "btn_non_pot_texture_sync_selected",
+                                                                    "HAlign": "HAlign_Center",
+                                                                    "ContentPadding": [12, 4],
+                                                                    "Text": "同步所选纹理",
+                                                                    "OnClick": "AssetOrganizer.instance.select_selected_non_pot_texture_results()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "Padding": [6, 0, 0, 0],
+                                                                "SButton": {
+                                                                    "Aka": "btn_non_pot_texture_export",
+                                                                    "HAlign": "HAlign_Center",
+                                                                    "ContentPadding": [12, 4],
+                                                                    "Text": "导出报告",
+                                                                    "OnClick": "AssetOrganizer.instance.export_non_pot_texture_report()"
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "Padding": [0, 0, 0, 8],
+                                                    "SBox": {
+                                                        "MaxDesiredHeight": 150,
+                                                        "MinDesiredHeight": 88,
+                                                        "Content": {
+                                                            "SListView": {
+                                                                "Aka": "list_non_pot_texture_results",
+                                                                "ItemHeight": 18,
+                                                                "ListItemsSource": [],
+                                                                "SHeaderRow": {
+                                                                    "Columns": [
+                                                                        {
+                                                                            "DefaultLabel": "非 POT 纹理结果（Ctrl/Shift 多选，双击同步到内容浏览器）",
+                                                                            "FillWidth": 1
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "SelectionMode": "Multi",
+                                                                "OnSelectionChanged": "AssetOrganizer.instance.on_non_pot_texture_result_selection_changed(%item, %index)",
+                                                                "OnMouseButtonDoubleClick": "AssetOrganizer.instance.on_non_pot_texture_result_double_click(%item, %index)"
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "AutoHeight": true,
+                                                    "SBorder": {
+                                                        "Padding": 8,
+                                                        "BorderImage": {
+                                                            "Style": "FCoreStyle",
+                                                            "Brush": "ToolPanel.GroupBorder"
+                                                        },
+                                                        "Content": {
+                                                            "SMultiLineEditableTextBox": {
+                                                                "Aka": "txt_non_pot_texture_preview",
+                                                                "Text": "非 POT 纹理扫描结果将显示在此处。",
+                                                                "IsReadOnly": true,
+                                                                "AutoWrapText": false
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                {
+                    "AutoHeight": true,
+                    "Padding": [8, 0, 8, 8],
+                    "STextBlock": {
+                        "Aka": "txt_status",
+                        "Text": "资产整理工具集已就绪。",
+                        "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                        "ColorAndOpacity": [0.8, 0.8, 0.8, 1.0],
+                        "AutoWrapText": true
+                    }
+                }
+            ]
+        }
+    }
+}

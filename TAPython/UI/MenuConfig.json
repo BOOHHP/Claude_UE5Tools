@@ -179,6 +179,12 @@
                 "ChameleonTools": "../Python/SceneTools/SceneTools.json"
             },
             {
+                "name": "Asset Tools",
+                "tooltip": "资产整理工具集：纹理、材质、静态网格等 Content Browser 资产治理。",
+                "ExtensionHookName": "OnToolBarChameleon",
+                "ChameleonTools": "../Python/AssetOrganizer/AssetOrganizer.json"
+            },
+            {
                 "name": "Batch Tag Tool",
                 "tooltip": "批量 Actor Tag 管理器：显式输入 + 交集显示 + Ctrl+Z 撤销。",
                 "ExtensionHookName": "OnToolBarChameleon",

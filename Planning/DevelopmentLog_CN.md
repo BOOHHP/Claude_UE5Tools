@@ -1,5 +1,40 @@
 # TA 工具开发日志
 
+## 2026-05-09 - SceneTools：BatchReport 批处理报告底座 v1
+
+- 模块：`TAPython/Python/SceneTools/`
+- 范围：开始沉淀 SceneTools 通用批处理报告底座，优先服务 G-14 与后续资产治理类扫描工具。
+- 新增：`_make_batch_report()` / `_add_batch_report_row()` / `_format_batch_report_text()` / `_export_batch_report_text()`，统一报告标题、范围、统计计数、明细行、失败清单和导出路径。
+- 接入：G-14“导出报告”已从专用文本拼接切换为通用 BatchReport 结构，再附加最近一次标记/软删除执行报告，保持现有 UI 行为不变。
+- 安全：本次不改任何执行写入逻辑，不改变预览、标记、软删除、选中结果等已验证交互，仅收束报告构建与 TXT 导出能力。
+- 验证：`SceneTools.py` 通过 `py_compile`；`SceneTools.json` 通过 JSON 解析；VS Code Problems 未发现错误。
+- 下一步：在 UE 中验证 G-14 导出报告内容；通过后可将 G-11/G-15/05/11 的执行报告逐步迁移到 BatchReport，或直接进入 `04_修复非 POT 纹理` v1。
+
+---
+
+## 2026-05-09 - SceneTools：04 修复非 POT 纹理 v1
+
+- 模块：`TAPython/Python/AssetOrganizer/`（已从 `SceneTools` 迁移为独立资产整理工具集）
+- 范围：新增资产治理类工具入口，先做低风险 Texture2D 非 2 的幂尺寸扫描与属性级修复，不做源图像像素重采样；SceneTools 回归 Actor / Component / Level 场景工具定位。
+- UI：新增“非 POT 纹理”折叠面板，支持输入扫描路径、递归子目录、修复后保存资产、预览、执行修复、同步所选纹理到内容浏览器、导出报告。
+- 扫描：使用 `AssetRegistryHelpers.get_asset_registry()` 与 `AssetRegistry.get_assets_by_path()` 按路径收集 Texture2D，再加载纹理并通过 `Texture2D.blueprint_get_size_x/y()` 读取尺寸。
+- 修复策略：对非 POT 纹理优先设置 `power_of_two_mode = TexturePowerOfTwoSetting.STRETCH_TO_POWER_OF_TWO`，对应 UE 纹理详情面板“延展为 2 的幂次方”；不修改源像素数据，不执行重采样。
+- 报告：复用 BatchReport v1 输出预览与 TXT 报告；结果列表只展示待修复与错误项，合规纹理仍保留在文本预览中便于审计。
+- 安全：执行路径使用 `ScopedEditorTransaction`，写入前调用 `modify()`；可选择是否在修复后调用 `EditorAssetLibrary.save_loaded_asset()` 保存资产。
+- 交互修正：扫描路径从手动填写改为 UE 原生 `SDetailsView` 多路径代理；新增 `NonPotTexturePathProxy` 虚拟 UObject，以 `Array(Name)` 暴露扫描目录列表，支持原生数组加号、删除、复制、排序等编辑体验。
+- 路径辅助：支持将内容浏览器当前选中文件夹或选中资产父目录追加到代理列表，点击“应用路径列表”后反写为扫描范围；扫描多目录时按资产路径去重，并提供“定位首个目录”用于回到 UE 内容浏览器预览。
+- UE 反馈修正：针对多路径扫描结果为 0 的问题，增强 AssetData 类名与对象路径读取兼容性；预览报告新增每个路径的 AssetRegistry 原始资产数与 Texture2D 数诊断。
+- 性能修正：移除 `EditorAssetLibrary.list_assets()` 后逐个 `load_asset()` 的加载式 fallback，避免扫描目录时触发 SparseVolumeTexture 等重资产派生数据缓存；多路径扫描改为一次性 `AssetRegistry.get_assets_by_paths()`，只通过元数据过滤 Texture2D，尺寸优先读取 AssetRegistry tag，取不到时才加载单个 Texture2D。
+- UE 反馈修正 2：修复点击“修复非 POT 纹理”时提示“纹理资产加载失败”的问题；原因是 `SoftObjectPath` 被直接 `str()` 后变成 `<Struct 'SoftObjectPath' ...>`，无法作为 `load_asset()` 路径使用。当前对象路径优先由 `AssetData.package_name + asset_name` 组成，并在执行阶段优先通过预览保留的 `AssetData` 加载纹理。
+- UE 反馈修正 3：修复未勾选“修复后保存资产”时执行仍失败的问题；Texture 内容资产的 `modify()` 返回 False 不再作为硬失败，当前会继续写入 `power_of_two_mode` 并通过 `EditorAssetSubsystem.set_dirty_flag()` 标脏。未勾选保存时只保留内存修改与脏标记，不自动保存到磁盘。
+- UE 反馈修正 4：按项目要求将非 POT 修复方式从“填充到 2 的幂次方”切换为“延展为 2 的幂次方”，枚举解析优先使用 `STRETCH_TO_POWER_OF_TWO`，并保留 CamelCase/TPO 前缀候选以兼容不同 UE Python 暴露名称。
+- 架构收口：新建 `AssetOrganizer` 工具集，包含 `AssetOrganizer.py` / `AssetOrganizer.json` / `AssetPathProxy.py`，并在 `MenuConfig.json` 新增“资产整理工具集”入口；原 `SceneTools.json` 已移除“非 POT 纹理”面板。
+- UE 反馈修正 5：修复已执行 Stretch 修复后的纹理再次扫描仍被判定为待修复的问题；当前源尺寸非 POT 时会加载该 Texture2D 读取 `power_of_two_mode`，若已经是目标 Stretch 模式，则视为合规并在预览中标注预计显示尺寸。
+- 验证：`SceneTools.py` / `AssetOrganizer.py` 通过 `py_compile`；`SceneTools.json` / `AssetOrganizer.json` / `MenuConfig.json` 通过 JSON 解析；VS Code Problems 未发现错误。
+- 下一步：在 UE 中验证 `/Game` 或子目录扫描、结果列表、内容浏览器同步、报告导出，以及 STRETCH_TO_POWER_OF_TWO 在目标项目中的实际枚举可用性。
+
+---
+
 ## 2026-05-08 - SceneTools Iteration 3：G-14 场景无效 Actor 清理 v1-v3
 
 - 模块：`TAPython/Python/SceneTools/`
