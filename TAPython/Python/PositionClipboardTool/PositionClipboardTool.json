@@ -1,0 +1,264 @@
+{
+    "TabLabel": "\u4f4d\u7f6e\u526a\u8d34\u677f",
+    "InitTabSize": [460, 560],
+    "InitPyCmd": "import importlib; from PositionClipboardTool import PositionClipboardTool; getattr(PositionClipboardTool, 'on_close', lambda: None)(); importlib.reload(PositionClipboardTool); PositionClipboardTool.instance = PositionClipboardTool.PositionClipboardToolController(%JsonPath)",
+    "OnClosePyCmd": "from PositionClipboardTool import PositionClipboardTool; getattr(PositionClipboardTool, 'on_close', lambda: None)()",
+    "Root": {
+        "SScrollBox": {
+            "Aka": "position_clipboard_scroll",
+            "Slots": [
+                {
+                    "Padding": [10, 10, 10, 10],
+                    "SVerticalBox": {
+                        "Slots": [
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 6],
+                                "STextBlock": {
+                                    "Text": "1. \u8bb0\u5f55\u5f53\u524d\u9009\u62e9",
+                                    "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 11 },
+                                    "ColorAndOpacity": [0.86, 0.86, 0.86, 1.0]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 8],
+                                "STextBlock": {
+                                    "Text": "\u9009\u4e2d\u591a\u4e2a Actor \u540e\uff0c\u5c06\u5b83\u4eec\u7684\u4e16\u754c\u4f4d\u7f6e\u4fdd\u5b58\u4e3a\u4e00\u4e2a\u69fd\u4f4d\uff0c\u65e5\u540e\u53ef\u4e00\u952e\u9009\u4e2d\u5e76\u7c98\u8d34\u56de\u6765\u3002",
+                                    "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                    "ColorAndOpacity": [0.68, 0.68, 0.68, 1.0],
+                                    "AutoWrapText": true
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 8],
+                                "SHorizontalBox": {
+                                    "Slots": [
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [0, 0, 6, 0],
+                                            "SEditableTextBox": {
+                                                "Aka": "input_slot_name",
+                                                "HintText": "\u69fd\u4f4d\u540d\u79f0\uff08\u53ef\u7559\u7a7a\u81ea\u52a8\u751f\u6210\uff09"
+                                            }
+                                        },
+                                        {
+                                            "AutoWidth": true,
+                                            "Padding": [0, 0, 6, 0],
+                                            "SButton": {
+                                                "Aka": "btn_capture",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [12, 5],
+                                                "Text": "\u8bb0\u5f55\u5f53\u524d\u9009\u62e9",
+                                                "OnClick": "PositionClipboardTool.instance.capture_selection()"
+                                            }
+                                        },
+                                        {
+                                            "AutoWidth": true,
+                                            "SButton": {
+                                                "Aka": "btn_clear_name",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [8, 5],
+                                                "Text": "\u6e05\u7a7a",
+                                                "OnClick": "PositionClipboardTool.instance.clear_slot_name()"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 8, 0, 6],
+                                "STextBlock": {
+                                    "Text": "2. \u4f4d\u7f6e\u69fd\u4f4d",
+                                    "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 11 },
+                                    "ColorAndOpacity": [0.86, 0.86, 0.86, 1.0]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 8],
+                                "SBox": {
+                                    "MinDesiredHeight": 120,
+                                    "MaxDesiredHeight": 150,
+                                    "Content": {
+                                        "SListView": {
+                                            "Aka": "list_slots",
+                                            "ItemHeight": 20,
+                                            "ListItemsSource": [],
+                                            "SHeaderRow": {
+                                                "Columns": [
+                                                    {
+                                                        "DefaultLabel": "\u5df2\u4fdd\u5b58\u7684\u4f4d\u7f6e\u69fd\u4f4d",
+                                                        "FillWidth": 1
+                                                    }
+                                                ]
+                                            },
+                                            "SelectionMode": "Single",
+                                            "OnSelectionChanged": "PositionClipboardTool.instance.on_slot_selection_changed(%item, %index)"
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 8],
+                                "SHorizontalBox": {
+                                    "Slots": [
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [0, 0, 5, 0],
+                                            "SButton": {
+                                                "Aka": "btn_refresh",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [8, 4],
+                                                "Text": "\u5237\u65b0",
+                                                "OnClick": "PositionClipboardTool.instance.refresh_ui()"
+                                            }
+                                        },
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [5, 0, 5, 0],
+                                            "SButton": {
+                                                "Aka": "btn_select_actors",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [8, 4],
+                                                "Text": "\u9009\u4e2d Actor",
+                                                "OnClick": "PositionClipboardTool.instance.select_slot_actors()"
+                                            }
+                                        },
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [5, 0, 0, 0],
+                                            "SButton": {
+                                                "Aka": "btn_delete_slot",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [8, 4],
+                                                "Text": "\u5220\u9664\u69fd\u4f4d",
+                                                "OnClick": "PositionClipboardTool.instance.delete_selected_slot()"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 6, 0, 6],
+                                "STextBlock": {
+                                    "Text": "3. \u7c98\u8d34\u56de\u4fdd\u5b58\u4f4d\u7f6e",
+                                    "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 11 },
+                                    "ColorAndOpacity": [0.86, 0.86, 0.86, 1.0]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 8],
+                                "SHorizontalBox": {
+                                    "Slots": [
+                                        {
+                                            "AutoWidth": true,
+                                            "Padding": [0, 0, 14, 0],
+                                            "SCheckBox": {
+                                                "Aka": "chk_include_rotation",
+                                                "IsChecked": false,
+                                                "Content": {
+                                                    "STextBlock": {
+                                                        "Text": "  \u540c\u65f6\u8fd8\u539f\u65cb\u8f6c"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "AutoWidth": true,
+                                            "SCheckBox": {
+                                                "Aka": "chk_include_scale",
+                                                "IsChecked": false,
+                                                "Content": {
+                                                    "STextBlock": {
+                                                        "Text": "  \u540c\u65f6\u8fd8\u539f\u7f29\u653e"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 10],
+                                "SHorizontalBox": {
+                                    "Slots": [
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [0, 0, 5, 0],
+                                            "SButton": {
+                                                "Aka": "btn_paste",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [10, 6],
+                                                "Text": "\u7c98\u8d34\u4f4d\u7f6e",
+                                                "OnClick": "PositionClipboardTool.instance.paste_slot_positions()"
+                                            }
+                                        },
+                                        {
+                                            "FillWidth": 1.0,
+                                            "Padding": [5, 0, 0, 0],
+                                            "SButton": {
+                                                "Aka": "btn_select_and_paste",
+                                                "HAlign": "HAlign_Center",
+                                                "ContentPadding": [10, 6],
+                                                "Text": "\u9009\u4e2d\u5e76\u7c98\u8d34",
+                                                "OnClick": "PositionClipboardTool.instance.select_and_paste_slot()"
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 4, 0, 6],
+                                "STextBlock": {
+                                    "Text": "\u69fd\u4f4d\u8be6\u60c5",
+                                    "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 10 },
+                                    "ColorAndOpacity": [0.78, 0.78, 0.78, 1.0]
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "Padding": [0, 0, 0, 8],
+                                "SBox": {
+                                    "MinDesiredHeight": 140,
+                                    "MaxDesiredHeight": 210,
+                                    "Content": {
+                                        "SMultiLineEditableTextBox": {
+                                            "Aka": "text_detail",
+                                            "Text": "\u5c1a\u672a\u8bb0\u5f55\u4efb\u4f55\u4f4d\u7f6e\u69fd\u4f4d\u3002",
+                                            "IsReadOnly": true,
+                                            "AutoWrapText": false
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "AutoHeight": true,
+                                "SBorder": {
+                                    "Padding": 8,
+                                    "BorderBackgroundColor": [0.06, 0.06, 0.06, 1.0],
+                                    "Content": {
+                                        "STextBlock": {
+                                            "Aka": "text_status",
+                                            "Text": "\u5c31\u7eea\u3002",
+                                            "Font": { "FontObject": "/Engine/EngineFonts/Roboto", "Size": 9 },
+                                            "ColorAndOpacity": [0.72, 0.82, 0.72, 1.0],
+                                            "AutoWrapText": true
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

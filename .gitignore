@@ -26,6 +26,9 @@ env/
 *.temp
 *.bak
 
+# TAPython tool runtime data (user-generated slot/data files)
+TAPython/Python/**/*_slots.json
+
 # Unreal Engine generated folders/files
 Binaries/
 Build/

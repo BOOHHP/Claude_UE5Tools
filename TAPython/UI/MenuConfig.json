@@ -189,6 +189,12 @@
                 "tooltip": "批量 Actor Tag 管理器：显式输入 + 交集显示 + Ctrl+Z 撤销。",
                 "ExtensionHookName": "OnToolBarChameleon",
                 "ChameleonTools": "../Python/BatchTagTool/BatchTagTool.json"
+            },
+            {
+                "name": "\u4f4d\u7f6e\u526a\u8d34\u677f",
+                "tooltip": "\u8bb0\u5f55\u591a\u4e2a Actor \u7684\u4f4d\u7f6e\uff0c\u5e76\u53ef\u4e00\u952e\u9009\u4e2d\u548c\u7c98\u8d34\u56de\u4fdd\u5b58\u4f4d\u7f6e\u3002",
+                "ExtensionHookName": "OnToolBarChameleon",
+                "ChameleonTools": "../Python/PositionClipboardTool/PositionClipboardTool.json"
             }
         ]
     },
